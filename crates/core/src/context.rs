@@ -33,7 +33,7 @@ pub struct Context {
     pub settings: Settings,
     pub library: Library,
     pub fonts: Fonts,
-    pub dictionaries: BTreeMap<String, Dictionary>,
+    pub dictionaries: BTreeMap<String, Box<dyn Dictionary>>,
     pub keyboard_layouts: BTreeMap<String, Layout>,
     pub input_history: FxHashMap<ViewId, VecDeque<String>>,
     pub frontlight: Box<dyn Frontlight>,
@@ -120,7 +120,7 @@ impl Context {
                         .map(|s| s.to_string_lossy().into_owned())
                         .unwrap_or_default()
                 });
-                self.dictionaries.insert(name, dict);
+                self.dictionaries.insert(name, Box::new(dict));
             }
         }
     }
