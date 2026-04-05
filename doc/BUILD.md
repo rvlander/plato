@@ -15,12 +15,14 @@ Install the appropriate [compiler toolchain](https://drive.google.com/drive/fold
 
 Install the required dependencies: `wget`, `curl`, `git`, `pkg-config`, `unzip`, `jq`, `patchelf`.
 
-Install *rustup*:
+Install _rustup_:
+
 ```sh
 curl https://sh.rustup.rs -sSf | sh
 ```
 
 Install the appropriate target:
+
 ```sh
 rustup target add arm-unknown-linux-gnueabihf
 ```
@@ -39,13 +41,14 @@ rustup target add arm-unknown-linux-gnueabihf
 
 ## Developer Tools
 
-Install the required dependencies: *MuPDF 1.27.0*, *DjVuLibre*, *FreeType*, *HarfBuzz*.
+Install the required dependencies: _MuPDF 1.27.2_, _DjVuLibre_, _FreeType_, _HarfBuzz_.
 
 ### Emulator
 
-Install one additional dependency: *SDL2*.
+Install one additional dependency: _SDL2_.
 
 You can then run the emulator with:
+
 ```sh
 ./run-emulator.sh
 ```
@@ -53,6 +56,7 @@ You can then run the emulator with:
 ### Importer
 
 You can install the importer with:
+
 ```sh
 ./install-importer.sh
 ```
