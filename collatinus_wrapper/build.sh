@@ -17,7 +17,9 @@ mkdir -p ${BUILD_DIR}
 
 # On macOS, Homebrew installs Qt5 at a keg-only path not on $PATH.
 # Detect it explicitly before falling back to generic qmake.
-if [ "${TARGET_OS}" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
+# QT5_PREFIX can be passed in from the environment (e.g. by build-kobo.sh
+# for cross-compilation, where the host Qt headers are used with the ARM compiler).
+if [ -z "${QT5_PREFIX}" ] && [ "${TARGET_OS}" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
     QT5_PREFIX=$(brew --prefix qt@5 2>/dev/null || true)
 fi
 
@@ -89,7 +91,7 @@ for src in \
 ; do
     obj="${BUILD_DIR}/$(basename ${src} .cpp).o"
     ${CXX} ${CPPFLAGS} ${CXXFLAGS} ${QT_CXXFLAGS} \
-        -std=c++17 \
+        -std=c++14 \
         -DMEDIEVAL \
         -I${COLLATINUS_SRC} \
         -c "${src}" -o "${obj}"
@@ -112,7 +114,7 @@ for hdr in lemCore.h lemmatiseur.h lemme.h modele.h irregs.h; do
         -DQT_CORE_LIB -DQT_NO_DEBUG \
         ${COLLATINUS_SRC}/${hdr} -o ${moc_cpp}
     ${CXX} ${CPPFLAGS} ${CXXFLAGS} ${QT_CXXFLAGS} \
-        -std=c++17 \
+        -std=c++14 \
         -DMEDIEVAL \
         -I${COLLATINUS_SRC} \
         -c "${moc_cpp}" -o "${moc_obj}"
@@ -122,7 +124,7 @@ done
 # Compile the wrapper itself
 # ---------------------------------------------------------------------------
 ${CXX} ${CPPFLAGS} ${CXXFLAGS} ${QT_CXXFLAGS} \
-    -std=c++17 \
+    -std=c++14 \
     -DMEDIEVAL \
     -I${COLLATINUS_SRC} \
     -c collatinus_wrapper.cpp -o ${BUILD_DIR}/collatinus_wrapper.o
