@@ -1,3 +1,8 @@
 [target.arm-unknown-linux-gnueabihf]
 linker = "arm-linux-gnueabihf-gcc"
-rustflags = ["-C", "target-feature=+v7,+vfp3,+neon"]
+rustflags = [
+    "-C", "target-feature=+v7,+vfp3,+neon",
+    # libcollatinus_wrapper.so has undefined Qt symbols resolved at runtime via
+    # dlopen(RTLD_GLOBAL) in collatinus_preload(). Allow this at link time.
+    "-C", "link-arg=-Wl,--allow-shlib-undefined",
+]

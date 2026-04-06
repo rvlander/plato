@@ -8,4 +8,5 @@ TARGET_OS=Kobo \
     CXX=arm-linux-gnueabihf-g++ \
     AR=arm-linux-gnueabihf-ar \
     QT5_PREFIX=${QT5_PREFIX} \
+    BUILD_SHARED=1 \
     ./build.sh

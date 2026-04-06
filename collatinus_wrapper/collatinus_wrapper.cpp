@@ -22,6 +22,10 @@
 #include <memory>
 #include <string>
 
+#if defined(__linux__) && defined(__arm__)
+#  include <dlfcn.h>
+#endif
+
 // Qt forward declarations needed before Collatinus headers
 #include <QCoreApplication>
 #include <QString>
@@ -77,6 +81,24 @@ static void ensure_initialized() {
 // ---------------------------------------------------------------------------
 
 extern "C" {
+
+void collatinus_preload(void) {
+#if defined(__linux__) && defined(__arm__)
+    // Qt5Core is not linked at cross-compile time for Kobo. Load it now into
+    // the global namespace so that the Qt symbols used by the Collatinus code
+    // (which is in this shared library) are resolved before their first call.
+    static const char * const paths[] = {
+        "/usr/local/Qt-5.2.1-arm/lib/libQt5Core.so.5",
+        "libQt5Core.so.5",
+        "libQt5Core.so",
+        nullptr
+    };
+    for (int i = 0; paths[i]; ++i) {
+        if (dlopen(paths[i], RTLD_LAZY | RTLD_GLOBAL))
+            return;
+    }
+#endif
+}
 
 char *collatinus_lookup(const char *word, const char *lang) {
     if (!word || !lang) return nullptr;

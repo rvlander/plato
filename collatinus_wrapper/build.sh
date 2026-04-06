@@ -129,10 +129,7 @@ ${CXX} ${CPPFLAGS} ${CXXFLAGS} ${QT_CXXFLAGS} \
     -I${COLLATINUS_SRC} \
     -c collatinus_wrapper.cpp -o ${BUILD_DIR}/collatinus_wrapper.o
 
-# ---------------------------------------------------------------------------
-# Archive into a static library (includes MOC objects for Q_OBJECT vtables)
-# ---------------------------------------------------------------------------
-${AR} -rcs ${BUILD_DIR}/libcollatinus_wrapper.a \
+ALL_OBJS="\
     ${BUILD_DIR}/collatinus_wrapper.o \
     ${BUILD_DIR}/ch.o \
     ${BUILD_DIR}/irregs.o \
@@ -144,7 +141,26 @@ ${AR} -rcs ${BUILD_DIR}/libcollatinus_wrapper.a \
     ${BUILD_DIR}/moc_lemmatiseur.o \
     ${BUILD_DIR}/moc_lemme.o \
     ${BUILD_DIR}/moc_modele.o \
-    ${BUILD_DIR}/moc_irregs.o
+    ${BUILD_DIR}/moc_irregs.o"
 
-echo "Built: ${BUILD_DIR}/libcollatinus_wrapper.a"
-echo "Qt link flags (needed by the final binary): ${QT_LIBS}"
+if [ "${BUILD_SHARED:-0}" = "1" ]; then
+    # ---------------------------------------------------------------------------
+    # Shared library for Kobo: Qt5Core is NOT linked here; it is loaded at
+    # runtime via collatinus_preload() using dlopen(RTLD_GLOBAL).
+    # --allow-shlib-undefined lets the link succeed with Qt symbols unresolved.
+    # ---------------------------------------------------------------------------
+    ${CXX} -shared \
+        -Wl,--allow-shlib-undefined \
+        -Wl,-soname,libcollatinus_wrapper.so \
+        ${ALL_OBJS} \
+        -ldl \
+        -o ${BUILD_DIR}/libcollatinus_wrapper.so
+    echo "Built: ${BUILD_DIR}/libcollatinus_wrapper.so"
+else
+    # ---------------------------------------------------------------------------
+    # Static library (macOS / Linux host build — Qt5Core linked by the host)
+    # ---------------------------------------------------------------------------
+    ${AR} -rcs ${BUILD_DIR}/libcollatinus_wrapper.a ${ALL_OBJS}
+    echo "Built: ${BUILD_DIR}/libcollatinus_wrapper.a"
+    echo "Qt link flags (needed by the final binary): ${QT_LIBS}"
+fi

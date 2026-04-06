@@ -15,6 +15,14 @@ char *collatinus_lookup(const char *word, const char *lang);
 /* Free a string returned by collatinus_lookup. */
 void collatinus_free_result(char *result);
 
+/*
+ * On ARM Linux (Kobo), Qt5Core is not linked at build time.
+ * Call this once before any other collatinus_* function to load
+ * Qt5Core into the process via dlopen(RTLD_GLOBAL).
+ * On other platforms this is a no-op.
+ */
+void collatinus_preload(void);
+
 #ifdef __cplusplus
 }
 #endif

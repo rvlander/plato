@@ -9,7 +9,9 @@ fn main() {
         println!("cargo:rustc-link-search=target/collatinus_wrapper/Kobo");
         println!("cargo:rustc-link-search=libs");
         println!("cargo:rustc-link-lib=dylib=stdc++");
-        println!("cargo:rustc-link-lib=dylib=Qt5Core");
+        // Qt5Core is loaded at runtime by collatinus_preload() via dlopen(RTLD_GLOBAL).
+        // --allow-shlib-undefined is set in .cargo/config.toml for this target so the
+        // linker accepts libcollatinus_wrapper.so's undefined Qt symbols.
     } else {
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         match target_os.as_ref() {
