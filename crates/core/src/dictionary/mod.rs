@@ -6,6 +6,8 @@
 mod dictreader;
 mod errors;
 mod indexing;
+mod collatinus_sys;
+pub mod collatinus;
 
 use std::path::Path;
 
