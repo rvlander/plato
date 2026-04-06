@@ -9,6 +9,8 @@ mod indexing;
 mod collatinus_sys;
 pub mod collatinus;
 
+pub use errors::DictError;
+
 use std::path::Path;
 
 use self::dictreader::DictReader;
