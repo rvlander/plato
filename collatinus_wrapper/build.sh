@@ -10,31 +10,65 @@ BUILD_DIR=../target/collatinus_wrapper/${TARGET_OS}
 mkdir -p ${BUILD_DIR}
 
 # ---------------------------------------------------------------------------
-# Locate Qt5 (or Qt6) include / link flags via pkg-config or qmake.
-# The library is Qt-based and cannot be compiled without Qt headers.
+# Locate Qt5 (or Qt6) include / link flags and MOC binary.
+# The Collatinus library uses Q_OBJECT pervasively; MOC-generated sources
+# must be compiled and linked to satisfy the vtable symbols.
 # ---------------------------------------------------------------------------
-if pkg-config --exists Qt5Core 2>/dev/null; then
-    QT_CXXFLAGS=$(pkg-config --cflags Qt5Core)
+
+# On macOS, Homebrew installs Qt5 at a keg-only path not on $PATH.
+# Detect it explicitly before falling back to generic qmake.
+if [ "${TARGET_OS}" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
+    QT5_PREFIX=$(brew --prefix qt@5 2>/dev/null || true)
+fi
+
+if [ -n "${QT5_PREFIX}" ] && [ -x "${QT5_PREFIX}/bin/qmake" ]; then
+    QMAKE="${QT5_PREFIX}/bin/qmake"
+    MOC="${QT5_PREFIX}/bin/moc"
+    QT_INSTALL_HEADERS=$(${QMAKE} -query QT_INSTALL_HEADERS)
+    QT_INSTALL_LIBS=$(${QMAKE} -query QT_INSTALL_LIBS)
+    QT_VERSION=$(${QMAKE} -query QT_VERSION | cut -d. -f1)
+    QT_CXXFLAGS="-I${QT_INSTALL_HEADERS} -I${QT_INSTALL_HEADERS}/QtCore -DQT_CORE_LIB -DQT_NO_DEBUG"
+    if [ "${TARGET_OS}" = "Darwin" ]; then
+        QT_LIBS="-F${QT_INSTALL_LIBS} -framework QtCore"
+    else
+        QT_LIBS="-L${QT_INSTALL_LIBS} -lQt${QT_VERSION}Core"
+    fi
+elif pkg-config --exists Qt5Core 2>/dev/null; then
+    QT_CXXFLAGS="$(pkg-config --cflags Qt5Core) -DQT_NO_DEBUG"
     QT_LIBS=$(pkg-config --libs Qt5Core)
+    # Try to find moc next to pkg-config-reported include
+    QT_INSTALL_HEADERS=$(pkg-config --variable=includedir Qt5Core)
+    QT_INSTALL_LIBS=$(pkg-config --variable=libdir Qt5Core)
+    # moc is usually in the bin next to the lib
+    MOC=$(dirname $(pkg-config --variable=exec_prefix Qt5Core 2>/dev/null || echo ""))/bin/moc
+    if [ ! -x "${MOC}" ]; then
+        MOC=$(command -v moc || command -v moc-qt5 || echo "moc")
+    fi
 elif pkg-config --exists Qt6Core 2>/dev/null; then
-    QT_CXXFLAGS=$(pkg-config --cflags Qt6Core)
+    QT_CXXFLAGS="$(pkg-config --cflags Qt6Core) -DQT_NO_DEBUG"
     QT_LIBS=$(pkg-config --libs Qt6Core)
+    QT_INSTALL_HEADERS=$(pkg-config --variable=includedir Qt6Core)
+    MOC=$(command -v moc || command -v moc-qt6 || echo "moc")
 elif command -v qmake >/dev/null 2>&1; then
-    QT_INSTALL_HEADERS=$(qmake -query QT_INSTALL_HEADERS)
-    QT_INSTALL_LIBS=$(qmake -query QT_INSTALL_LIBS)
-    QT_VERSION=$(qmake -query QT_VERSION | cut -d. -f1)
-    QT_CXXFLAGS="-I${QT_INSTALL_HEADERS} -I${QT_INSTALL_HEADERS}/QtCore"
+    QMAKE=qmake
+    MOC=moc
+    QT_INSTALL_HEADERS=$(${QMAKE} -query QT_INSTALL_HEADERS)
+    QT_INSTALL_LIBS=$(${QMAKE} -query QT_INSTALL_LIBS)
+    QT_VERSION=$(${QMAKE} -query QT_VERSION | cut -d. -f1)
+    QT_CXXFLAGS="-I${QT_INSTALL_HEADERS} -I${QT_INSTALL_HEADERS}/QtCore -DQT_CORE_LIB -DQT_NO_DEBUG"
     QT_LIBS="-L${QT_INSTALL_LIBS} -lQt${QT_VERSION}Core"
 elif command -v qmake6 >/dev/null 2>&1; then
-    QT_INSTALL_HEADERS=$(qmake6 -query QT_INSTALL_HEADERS)
-    QT_INSTALL_LIBS=$(qmake6 -query QT_INSTALL_LIBS)
-    QT_CXXFLAGS="-I${QT_INSTALL_HEADERS} -I${QT_INSTALL_HEADERS}/QtCore"
+    QMAKE=qmake6
+    MOC=moc
+    QT_INSTALL_HEADERS=$(${QMAKE} -query QT_INSTALL_HEADERS)
+    QT_INSTALL_LIBS=$(${QMAKE} -query QT_INSTALL_LIBS)
+    QT_CXXFLAGS="-I${QT_INSTALL_HEADERS} -I${QT_INSTALL_HEADERS}/QtCore -DQT_CORE_LIB -DQT_NO_DEBUG"
     QT_LIBS="-L${QT_INSTALL_LIBS} -lQt6Core"
 else
     echo "ERROR: Qt not found. Install Qt5 or Qt6 development packages." >&2
     echo "  On Debian/Ubuntu: apt install qtbase5-dev" >&2
     echo "  On Fedora/RHEL:   dnf install qt5-qtbase-devel" >&2
-    echo "  On macOS (brew):  brew install qt" >&2
+    echo "  On macOS (brew):  brew install qt@5" >&2
     exit 1
 fi
 
@@ -62,6 +96,29 @@ for src in \
 done
 
 # ---------------------------------------------------------------------------
+# Run Qt MOC on all Collatinus headers that declare Q_OBJECT.
+# The generated moc_*.cpp files define the vtables for signals/slots and
+# staticMetaObject — without them the final link will fail with undefined
+# symbols.
+# ---------------------------------------------------------------------------
+for hdr in lemCore.h lemmatiseur.h lemme.h modele.h irregs.h; do
+    moc_cpp="${BUILD_DIR}/moc_${hdr%.h}.cpp"
+    moc_obj="${BUILD_DIR}/moc_${hdr%.h}.o"
+    ${MOC} \
+        -I${QT_INSTALL_HEADERS} \
+        -I${QT_INSTALL_HEADERS}/QtCore \
+        -I${COLLATINUS_SRC} \
+        -DMEDIEVAL \
+        -DQT_CORE_LIB -DQT_NO_DEBUG \
+        ${COLLATINUS_SRC}/${hdr} -o ${moc_cpp}
+    ${CXX} ${CPPFLAGS} ${CXXFLAGS} ${QT_CXXFLAGS} \
+        -std=c++17 \
+        -DMEDIEVAL \
+        -I${COLLATINUS_SRC} \
+        -c "${moc_cpp}" -o "${moc_obj}"
+done
+
+# ---------------------------------------------------------------------------
 # Compile the wrapper itself
 # ---------------------------------------------------------------------------
 ${CXX} ${CPPFLAGS} ${CXXFLAGS} ${QT_CXXFLAGS} \
@@ -71,7 +128,7 @@ ${CXX} ${CPPFLAGS} ${CXXFLAGS} ${QT_CXXFLAGS} \
     -c collatinus_wrapper.cpp -o ${BUILD_DIR}/collatinus_wrapper.o
 
 # ---------------------------------------------------------------------------
-# Archive into a static library
+# Archive into a static library (includes MOC objects for Q_OBJECT vtables)
 # ---------------------------------------------------------------------------
 ${AR} -rcs ${BUILD_DIR}/libcollatinus_wrapper.a \
     ${BUILD_DIR}/collatinus_wrapper.o \
@@ -80,7 +137,12 @@ ${AR} -rcs ${BUILD_DIR}/libcollatinus_wrapper.a \
     ${BUILD_DIR}/lemme.o \
     ${BUILD_DIR}/modele.o \
     ${BUILD_DIR}/lemCore.o \
-    ${BUILD_DIR}/lemmatiseur.o
+    ${BUILD_DIR}/lemmatiseur.o \
+    ${BUILD_DIR}/moc_lemCore.o \
+    ${BUILD_DIR}/moc_lemmatiseur.o \
+    ${BUILD_DIR}/moc_lemme.o \
+    ${BUILD_DIR}/moc_modele.o \
+    ${BUILD_DIR}/moc_irregs.o
 
 echo "Built: ${BUILD_DIR}/libcollatinus_wrapper.a"
 echo "Qt link flags (needed by the final binary): ${QT_LIBS}"
