@@ -5,14 +5,12 @@ use super::DictError;
 
 pub struct CollatinusDictionary {
     lang: CString,
-    lang_str: String,
 }
 
 impl CollatinusDictionary {
     pub fn new(lang: &str) -> Self {
         CollatinusDictionary {
             lang: CString::new(lang).expect("lang must not contain null bytes"),
-            lang_str: lang.to_string(),
         }
     }
 }
