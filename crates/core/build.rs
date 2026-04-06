@@ -9,6 +9,7 @@ fn main() {
         println!("cargo:rustc-link-search=target/collatinus_wrapper/Kobo");
         println!("cargo:rustc-link-search=libs");
         println!("cargo:rustc-link-lib=dylib=stdc++");
+        println!("cargo:rustc-link-lib=dylib=Qt5Core");
     } else {
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         match target_os.as_ref() {
@@ -16,11 +17,22 @@ fn main() {
                 println!("cargo:rustc-link-search=target/mupdf_wrapper/Linux");
                 println!("cargo:rustc-link-search=target/collatinus_wrapper/Linux");
                 println!("cargo:rustc-link-lib=dylib=stdc++");
+                println!("cargo:rustc-link-lib=dylib=Qt5Core");
             },
             "macos" => {
                 println!("cargo:rustc-link-search=target/mupdf_wrapper/Darwin");
                 println!("cargo:rustc-link-search=target/collatinus_wrapper/Darwin");
                 println!("cargo:rustc-link-lib=dylib=c++");
+                // Qt5Core is a framework on macOS
+                let qt_lib = std::process::Command::new("brew")
+                    .args(["--prefix", "qt@5"])
+                    .output()
+                    .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                    .unwrap_or_default();
+                if !qt_lib.is_empty() {
+                    println!("cargo:rustc-link-search=framework={}/lib", qt_lib);
+                }
+                println!("cargo:rustc-link-lib=framework=QtCore");
             },
             _ => panic!("Unsupported platform: {}.", target_os),
         }
