@@ -12,6 +12,8 @@ declare -A urls=(
 	# Fonts
 	["freetype2"]="https://download.savannah.gnu.org/releases/freetype/freetype-2.14.1.tar.gz"
 	["harfbuzz"]="https://github.com/harfbuzz/harfbuzz/archive/12.3.0.tar.gz"
+	# Latin morphological analysis
+	["collatinus"]="https://github.com/biblissima/collatinus/archive/refs/heads/Daemon.tar.gz"
 	# Documents
 	["gumbo"]="https://github.com/google/gumbo-parser/archive/v0.10.1.tar.gz"
 	["djvulibre"]="http://downloads.sourceforge.net/djvu/djvulibre-3.5.29.tar.gz"
