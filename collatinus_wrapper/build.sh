@@ -154,6 +154,8 @@ if [ "${BUILD_SHARED:-0}" = "1" ]; then
         -Wl,-soname,libcollatinus_wrapper.so \
         ${ALL_OBJS} \
         -ldl \
+        -static-libstdc++ \
+        -static-libgcc \
         -o ${BUILD_DIR}/libcollatinus_wrapper.so
     echo "Built: ${BUILD_DIR}/libcollatinus_wrapper.so"
 else
