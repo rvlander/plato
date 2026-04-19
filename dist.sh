@@ -24,7 +24,6 @@ cp libs/libharfbuzz.so dist/libs/libharfbuzz.so.0
 cp libs/libgumbo.so dist/libs/libgumbo.so.2
 cp libs/libdjvulibre.so dist/libs/libdjvulibre.so.21
 cp libs/libmupdf.so dist/libs
-cp target/collatinus_wrapper/Kobo/libcollatinus_wrapper.so dist/libs
 
 cp -R thirdparty/collatinus/bin/data dist/data
 

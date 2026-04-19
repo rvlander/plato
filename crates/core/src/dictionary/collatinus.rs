@@ -1,14 +1,7 @@
 use std::ffi::{CString, CStr};
-use std::sync::Once;
 use super::collatinus_sys;
 use super::Dictionary;
 use super::DictError;
-
-static PRELOAD: Once = Once::new();
-
-fn ensure_preloaded() {
-    PRELOAD.call_once(|| unsafe { collatinus_sys::collatinus_preload(); });
-}
 
 pub struct CollatinusDictionary {
     lang: CString,
@@ -24,7 +17,6 @@ impl CollatinusDictionary {
 
 impl Dictionary for CollatinusDictionary {
     fn lookup(&mut self, word: &str, _fuzzy: bool) -> Result<Vec<[String; 2]>, DictError> {
-        ensure_preloaded();
         let c_word = match CString::new(word) {
             Ok(s) => s,
             Err(_) => return Ok(vec![]),
