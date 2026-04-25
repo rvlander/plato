@@ -12,12 +12,14 @@ cd plato
 A `flake.nix` is provided that supplies every dependency automatically on macOS and Linux.
 
 Enable flakes (once, user-level):
+
 ```sh
 mkdir -p ~/.config/nix
 echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf
 ```
 
 Enter the development shell:
+
 ```sh
 nix develop
 ```
@@ -133,4 +135,22 @@ You can install the importer with:
 
 ```sh
 ./install-importer.sh
+```
+
+# Profiling emulator on MacOS
+
+```sh
+nix develop
+export RUSTFLAGS="-C debuginfo=2 -C force-frame-pointers=yes"
+export CFLAGS="-O1 -g -fno-omit-frame-pointer"
+export CXXFLAGS="-O1 -g -fno-omit-frame-pointer"
+export LDFLAGS="-Wl,-no_strip_all"
+
+COLLATINUS_DATA=./thirdparty/collatinus/bin/data cargo run --release -p  emulator
+```
+
+Out of nix:
+
+```sh
+open -a Instruments
 ```
