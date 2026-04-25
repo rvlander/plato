@@ -28,11 +28,17 @@
               url  = "https://casper.mupdf.com/downloads/archive/mupdf-1.27.0-source.tar.gz";
               hash = "sha256-riRCQW3kmRgtN6UmxvorrMejvtWoiNETygSERITf58Y=";
             };
-            postInstall = builtins.replaceStrings ["Version: 1.27.2"] ["Version: 1.27.0"] old.postInstall;
+            postInstall =
+              (builtins.replaceStrings ["Version: 1.27.2"] ["Version: 1.27.0"] old.postInstall)
+              + ''
+                # plato-core/build.rs emits -lmupdf-third on non-ARM targets, but this
+                # MuPDF build bundles all third-party symbols into libmupdf.
+                # An empty stub satisfies the linker without providing any symbols.
+                ar rcs $out/lib/libmupdf-third.a
+              '';
           });
         in {
           default = pkgs.mkShell {
-            nativeBuildInputs = [ pkgs.pkg-config ];
             packages = [
               linaro
               rust
@@ -66,16 +72,6 @@
               export CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
               export CXX_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
               export AR_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar
-
-              # Create a stub libmupdf-third.a: plato-core/build.rs emits -lmupdf-third
-              # but Nix's MuPDF bundles all third-party symbols into a single libmupdf.so/.dylib.
-              # This stub satisfies the linker without providing any symbols.
-              _stub_dir="$HOME/.cache/plato-nix-stubs"
-              mkdir -p "$_stub_dir"
-              if [ ! -f "$_stub_dir/libmupdf-third.a" ]; then
-                ar rcs "$_stub_dir/libmupdf-third.a"
-              fi
-              export LIBRARY_PATH="$_stub_dir''${LIBRARY_PATH:+:$LIBRARY_PATH}"
             '';
           };
         }
