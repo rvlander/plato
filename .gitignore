@@ -15,7 +15,9 @@
 /hyphenation-patterns
 /dictionaries
 /dist
+/books
 /bundle
 /plato-*.zip
 /thirdparty/*/*
 !/thirdparty/*/*kobo*
+/nix/linaro-darwin.tar.bz2
