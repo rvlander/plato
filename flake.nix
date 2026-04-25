@@ -53,7 +53,30 @@
               pkgs.djvulibre
               mupdf'
               mupdf'.dev
+              # libs needed by plato-core/build.rs for the native emulator target
+              pkgs.libjpeg
+              pkgs.libpng
+              pkgs.gumbo
+              pkgs.openjpeg
+              pkgs.jbig2dec
+              pkgs.bzip2
+              pkgs.zlib
             ];
+            shellHook = ''
+              export CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
+              export CXX_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
+              export AR_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar
+
+              # The Nix MuPDF package bundles third-party libs into libmupdf.dylib.
+              # plato-core/build.rs still links -lmupdf-third on non-ARM targets,
+              # so we create a stub empty static archive to satisfy the linker.
+              _stub_dir="$HOME/.cache/plato-nix-stubs"
+              mkdir -p "$_stub_dir"
+              if [ ! -f "$_stub_dir/libmupdf-third.a" ]; then
+                ar rcs "$_stub_dir/libmupdf-third.a"
+              fi
+              export LIBRARY_PATH="$_stub_dir''${LIBRARY_PATH:+:$LIBRARY_PATH}"
+            '';
           };
         }
       );
