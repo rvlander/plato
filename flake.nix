@@ -28,14 +28,14 @@
               url  = "https://casper.mupdf.com/downloads/archive/mupdf-1.27.0-source.tar.gz";
               hash = "sha256-riRCQW3kmRgtN6UmxvorrMejvtWoiNETygSERITf58Y=";
             };
-            postInstall =
-              (builtins.replaceStrings ["Version: 1.27.2"] ["Version: 1.27.0"] old.postInstall)
-              + ''
-                # plato-core/build.rs emits -lmupdf-third on non-ARM targets, but this
-                # MuPDF build bundles all third-party symbols into libmupdf.
-                # An empty stub satisfies the linker without providing any symbols.
-                ar rcs $out/lib/libmupdf-third.a
-              '';
+            # postInstall =
+            #   (builtins.replaceStrings ["Version: 1.27.2"] ["Version: 1.27.0"] old.postInstall)
+            #   + ''
+            #     # plato-core/build.rs emits -lmupdf-third on non-ARM targets, but this
+            #     # MuPDF build bundles all third-party symbols into libmupdf.
+            #     # An empty stub satisfies the linker without providing any symbols.
+            #     ar rcs $out/lib/libmupdf-third.a
+            #   '';
           });
         in {
           default = pkgs.mkShell {
@@ -43,6 +43,7 @@
               linaro
               rust
               # thirdparty build tools
+              pkgs.git
               pkgs.gnumake
               pkgs.meson
               pkgs.ninja
