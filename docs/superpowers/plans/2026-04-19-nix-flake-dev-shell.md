@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add `flake.nix` so that `nix develop` provides every dependency needed to cross-compile Plato for Kobo and run the emulator on macOS.
+**Goal:** Add `flake.nix` so that `nix develop` provides every dependency needed to cross-compile Plato for Kobo and run the emulator on macOS and Linux.
 
-**Architecture:** Single `devShells.default` driven by two flake inputs (`nixpkgs-unstable` and `rust-overlay`). Linaro 4.9.4 is packaged as a local derivation in `nix/linaro.nix` that unpacks a manually-downloaded tarball placed at `nix/linaro-darwin.tar.bz2`. MuPDF 1.27.0 is provided by overriding the nixpkgs derivation. All other packages come straight from nixpkgs.
+**Architecture:** Single `devShells.default` driven by two flake inputs (`nixpkgs-unstable` and `rust-overlay`). Linaro 4.9.4 is packaged in `nix/linaro.nix` using `pkgs.fetchurl` to download directly from Google Drive (separate tarballs for Darwin and Linux). On Linux, `autoPatchelfHook` patches the ELF binaries for the Nix environment. MuPDF 1.27.0 is provided by overriding the nixpkgs derivation. All other packages come straight from nixpkgs.
 
-**Tech Stack:** Nix Flakes 2.4+, nixpkgs-unstable, oxalica/rust-overlay, Nix stdenv (macOS Darwin)
+**Tech Stack:** Nix Flakes 2.4+, nixpkgs-unstable, oxalica/rust-overlay, Nix stdenv (Darwin + Linux)
 
 ---
 
@@ -14,10 +14,9 @@
 
 | File | Action | Responsibility |
 |---|---|---|
-| `flake.nix` | Create | Declare inputs, expose `devShells.default` for `aarch64-darwin` and `x86_64-darwin` |
-| `nix/linaro.nix` | Create | Derivation that unpacks the Linaro Darwin tarball |
-| `nix/linaro-darwin.tar.bz2` | Copy (not committed) | Linaro 4.9.4 tarball from Google Drive |
-| `.gitignore` | Modify | Ignore `nix/linaro-darwin.tar.bz2` |
+| `flake.nix` | Create | Declare inputs, expose `devShells.default` for `aarch64-darwin`, `x86_64-darwin`, `x86_64-linux` |
+| `nix/linaro.nix` | Create | Derivation that downloads and unpacks the correct Linaro tarball per platform |
+| `.gitignore` | Modify (done ✓) | Ignore `nix/linaro-darwin.tar.bz2` (harmless; no local tarball needed) |
 | `flake.lock` | Auto-generated | Pinned input revisions |
 
 ---
@@ -79,17 +78,46 @@ git commit -m "chore: ignore Linaro tarball in nix/"
 Create `nix/linaro.nix`:
 
 ```nix
-{ pkgs }:
+{ pkgs, system }:
+let
+  inherit (pkgs) lib;
+
+  sources = {
+    "x86_64-darwin" = {
+      url  = "https://drive.usercontent.google.com/download?id=1ggMLM3VBwCYQuFTpJEC0OmyMkiDtYMju&export=download&confirm=t";
+      hash = "sha256-rSP4JS/KsK8dxPwvdY7Cnb5zxbKbFYnVuKe/VIOIf/Q=";
+    };
+    "aarch64-darwin" = {
+      url  = "https://drive.usercontent.google.com/download?id=1ggMLM3VBwCYQuFTpJEC0OmyMkiDtYMju&export=download&confirm=t";
+      hash = "sha256-rSP4JS/KsK8dxPwvdY7Cnb5zxbKbFYnVuKe/VIOIf/Q=";
+    };
+    "x86_64-linux" = {
+      url  = "https://drive.usercontent.google.com/download?id=1xSf7PzfmI2DD7RHsPhwSy-Ltm8gabblK&export=download&confirm=t";
+      hash = "sha256-B6wRny+a/dla8tzL3Lu1U2lcAQeBtSQ4lT+W/RhBkSI=";
+    };
+  };
+  source = sources.${system};
+in
 pkgs.stdenv.mkDerivation {
   name = "gcc-linaro-4.9.4-2017.01";
 
-  src = builtins.path {
-    name  = "gcc-linaro-darwin.tar.bz2";
-    path  = ./linaro-darwin.tar.bz2;
+  src = pkgs.fetchurl {
+    inherit (source) url hash;
   };
 
+  # On Linux, autoPatchelfHook patches all ELF binaries to use Nix store paths.
+  # On Darwin, Mach-O binaries need no patching.
+  nativeBuildInputs = lib.optionals pkgs.stdenv.isLinux [
+    pkgs.autoPatchelfHook
+  ];
+
+  buildInputs = lib.optionals pkgs.stdenv.isLinux [
+    pkgs.glibc
+    pkgs.stdenv.cc.cc.lib   # libstdc++, libgcc_s
+  ];
+
   unpackPhase = ''
-    tar -xjf "$src" --strip-components=1 -C .
+    tar -xf "$src" --strip-components=1 -C .
   '';
 
   installPhase = ''
@@ -97,10 +125,10 @@ pkgs.stdenv.mkDerivation {
     cp -r . "$out"
   '';
 
-  dontBuild   = true;
-  dontFixup   = true;
-  dontStrip   = true;
-  dontPatchELF = true;
+  dontBuild    = true;
+  dontStrip    = true;
+  dontFixup    = pkgs.stdenv.isDarwin;
+  dontPatchELF = pkgs.stdenv.isDarwin;
 }
 ```
 
@@ -114,13 +142,13 @@ Create `flake.nix`:
 
   outputs = { self, nixpkgs }:
     let
-      systems     = [ "aarch64-darwin" "x86_64-darwin" ];
+      systems       = [ "aarch64-darwin" "x86_64-darwin" "x86_64-linux" ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems f;
     in {
       devShells = forAllSystems (system:
         let
           pkgs   = import nixpkgs { inherit system; };
-          linaro = import ./nix/linaro.nix { inherit pkgs; };
+          linaro = import ./nix/linaro.nix { inherit pkgs system; };
         in {
           default = pkgs.mkShell {
             packages = [ linaro ];
@@ -171,8 +199,8 @@ Replace `flake.nix` entirely:
 ```nix
 {
   inputs = {
-    nixpkgs.url    = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    rust-overlay   = {
+    nixpkgs.url  = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    rust-overlay = {
       url    = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
@@ -180,7 +208,7 @@ Replace `flake.nix` entirely:
 
   outputs = { self, nixpkgs, rust-overlay }:
     let
-      systems       = [ "aarch64-darwin" "x86_64-darwin" ];
+      systems       = [ "aarch64-darwin" "x86_64-darwin" "x86_64-linux" ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems f;
     in {
       devShells = forAllSystems (system:
@@ -189,7 +217,7 @@ Replace `flake.nix` entirely:
             inherit system;
             overlays = [ rust-overlay.overlays.default ];
           };
-          linaro = import ./nix/linaro.nix { inherit pkgs; };
+          linaro = import ./nix/linaro.nix { inherit pkgs system; };
           rust   = pkgs.rust-bin.stable.latest.default.override {
             targets = [ "arm-unknown-linux-gnueabihf" ];
           };
@@ -314,7 +342,7 @@ Expected: error — mupdf not found.
 
   outputs = { self, nixpkgs, rust-overlay }:
     let
-      systems       = [ "aarch64-darwin" "x86_64-darwin" ];
+      systems       = [ "aarch64-darwin" "x86_64-darwin" "x86_64-linux" ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems f;
     in {
       devShells = forAllSystems (system:
@@ -323,7 +351,7 @@ Expected: error — mupdf not found.
             inherit system;
             overlays = [ rust-overlay.overlays.default ];
           };
-          linaro = import ./nix/linaro.nix { inherit pkgs; };
+          linaro = import ./nix/linaro.nix { inherit pkgs system; };
           rust   = pkgs.rust-bin.stable.latest.default.override {
             targets = [ "arm-unknown-linux-gnueabihf" ];
           };
@@ -517,9 +545,12 @@ git commit -m "feat(nix): complete dev shell with all BUILD.md dependencies"
 
 ---
 
-## Appendix: Known hashes
+## Appendix: Known hashes and URLs
 
-| Artifact | Hash (SRI) |
-|---|---|
-| `nix/linaro-darwin.tar.bz2` | `sha256-rSP4JS/KsK8dxPwvdY7Cnb5zxbKbFYnVuKe/VIOIf/Q=` |
-| `mupdf-1.27.0-source.tar.gz` | `sha256-xuffhESEBMoT0Yio1b6jx6wr+sYmpTctGJnkbUFCJK4=` |
+| Artifact | Google Drive ID | Hash (SRI) |
+|---|---|---|
+| Linaro Darwin (`gcc-linaro-4.9.4-2017.01-20170615_darwin.tar.bz2`) | `1ggMLM3VBwCYQuFTpJEC0OmyMkiDtYMju` | `sha256-rSP4JS/KsK8dxPwvdY7Cnb5zxbKbFYnVuKe/VIOIf/Q=` |
+| Linaro Linux (`gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf.tar.*`) | `1xSf7PzfmI2DD7RHsPhwSy-Ltm8gabblK` | `sha256-B6wRny+a/dla8tzL3Lu1U2lcAQeBtSQ4lT+W/RhBkSI=` |
+| `mupdf-1.27.0-source.tar.gz` | — | `sha256-xuffhESEBMoT0Yio1b6jx6wr+sYmpTctGJnkbUFCJK4=` |
+
+Download URL pattern: `https://drive.usercontent.google.com/download?id=<ID>&export=download&confirm=t`
