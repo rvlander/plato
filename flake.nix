@@ -24,7 +24,14 @@
           };
         in {
           default = pkgs.mkShell {
-            packages = [ linaro rust ];
+            packages = [
+              linaro
+              rust
+              pkgs.SDL2
+              pkgs.freetype
+              pkgs.harfbuzz
+              pkgs.djvulibre
+            ];
           };
         }
       );
