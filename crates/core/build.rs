@@ -16,15 +16,16 @@ fn main() {
                 println!("cargo:rustc-link-search=target/mupdf_wrapper/Linux");
                 println!("cargo:rustc-link-search=target/collatinus_wrapper/Linux");
                 println!("cargo:rustc-link-lib=dylib=stdc++");
-            },
+            }
             "macos" => {
                 println!("cargo:rustc-link-search=target/mupdf_wrapper/Darwin");
                 println!("cargo:rustc-link-search=target/collatinus_wrapper/Darwin");
                 println!("cargo:rustc-link-lib=dylib=c++");
-            },
+            }
             _ => panic!("Unsupported platform: {}.", target_os),
         }
-        println!("cargo:rustc-link-lib=mupdf-third");
+
+        // println!("cargo:rustc-link-lib=mupdf-third");
     }
 
     println!("cargo:rustc-link-lib=static=collatinus_wrapper");
