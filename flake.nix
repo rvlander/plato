@@ -36,6 +36,15 @@
             packages = [
               linaro
               rust
+              # thirdparty build tools
+              pkgs.gnumake
+              pkgs.meson
+              pkgs.ninja
+              pkgs.cmake
+              pkgs.autoconf
+              pkgs.automake
+              pkgs.libtool
+              pkgs.pkg-config
             ];
             buildInputs = [
               pkgs.SDL2
