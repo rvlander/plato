@@ -7,6 +7,8 @@ let
       url  = "https://drive.usercontent.google.com/download?id=1ggMLM3VBwCYQuFTpJEC0OmyMkiDtYMju&export=download&confirm=t";
       hash = "sha256-rSP4JS/KsK8dxPwvdY7Cnb5zxbKbFYnVuKe/VIOIf/Q=";
     };
+    # Both Darwin architectures use the same tarball because the Linaro Darwin binary
+    # is x86_64 and runs under Rosetta 2 on Apple Silicon.
     "aarch64-darwin" = {
       url  = "https://drive.usercontent.google.com/download?id=1ggMLM3VBwCYQuFTpJEC0OmyMkiDtYMju&export=download&confirm=t";
       hash = "sha256-rSP4JS/KsK8dxPwvdY7Cnb5zxbKbFYnVuKe/VIOIf/Q=";

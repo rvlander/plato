@@ -67,9 +67,9 @@
               export CXX_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
               export AR_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar
 
-              # The Nix MuPDF package bundles third-party libs into libmupdf.dylib.
-              # plato-core/build.rs still links -lmupdf-third on non-ARM targets,
-              # so we create a stub empty static archive to satisfy the linker.
+              # Create a stub libmupdf-third.a: plato-core/build.rs emits -lmupdf-third
+              # but Nix's MuPDF bundles all third-party symbols into a single libmupdf.so/.dylib.
+              # This stub satisfies the linker without providing any symbols.
               _stub_dir="$HOME/.cache/plato-nix-stubs"
               mkdir -p "$_stub_dir"
               if [ ! -f "$_stub_dir/libmupdf-third.a" ]; then
