@@ -66,6 +66,8 @@ Position depends on where the selected word sits (determined by `selection_rect(
 
 The content area supports vertical scrolling via a **scrollbar on the right edge of the panel** when the definition overflows the available height. The scrollbar is a thin draggable track — tapping or dragging it updates the `HtmlDocument` location (page offset) and re-renders the content area. No swipe gestures.
 
+There is no existing scrollbar component in Plato — a minimal `ScrollBar` view must be implemented as part of this feature (new file: `crates/core/src/view/scroll_bar.rs`). It only needs to handle vertical drag and tap, and report `Event::Scroll(delta)` onto the bus.
+
 Uses existing constants: `SMALL_BAR_HEIGHT`, `THICKNESS_MEDIUM`.
 Uses existing components: `RoundedButton` / `LabeledIcon`.
 Uses existing CSS: `css/dictionary.css`.
