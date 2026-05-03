@@ -64,6 +64,8 @@ Position depends on where the selected word sits (determined by `selection_rect(
 └─────────────────────────────────────┘
 ```
 
+The content area supports vertical scrolling via swipe gestures (finger motion events) when the definition overflows the available height. The `HtmlDocument` location (page offset) is updated on scroll and the content area re-rendered accordingly.
+
 Uses existing constants: `SMALL_BAR_HEIGHT`, `THICKNESS_MEDIUM`.
 Uses existing components: `RoundedButton` / `LabeledIcon`.
 Uses existing CSS: `css/dictionary.css`.
@@ -120,6 +122,5 @@ If no dictionary matches or lookup returns empty, the panel still appears and sh
 
 ## Out of Scope
 
-- Pagination/scrolling within the panel beyond what HtmlDocument provides natively
 - Animations or transitions
 - Any change to the standalone Dictionary app
