@@ -16,12 +16,13 @@
 #include <memory>
 #include <string>
 
-#include "../thirdparty/collatinus/src/lemCore.h"
-#include "../thirdparty/collatinus/src/lemmatiseur.h"
+#include "lemCore.h"
+#include "lemmatiseur.h"
 
 static std::unique_ptr<LemCore>     g_lemCore;
 static std::unique_ptr<Lemmatiseur> g_lemmat;
 static std::once_flag               g_init_flag;
+static std::string                  g_lang = "fr";
 
 static void ensure_initialized() {
     std::call_once(g_init_flag, []() {
@@ -32,7 +33,7 @@ static void ensure_initialized() {
             if (resDir.back() != '/') resDir += '/';
         }
 
-        g_lemCore.reset(new LemCore(resDir));
+        g_lemCore.reset(new LemCore(resDir, g_lang));
         g_lemCore->setExtension(true);
 
         g_lemmat.reset(new Lemmatiseur(g_lemCore.get(), resDir));
@@ -43,6 +44,13 @@ static void ensure_initialized() {
 }
 
 extern "C" {
+
+int collatinus_init(const char *lang) {
+    if (!lang || !*lang) return -1;
+    g_lang = lang;
+    ensure_initialized();
+    return g_lemCore ? 0 : -1;
+}
 
 char *collatinus_lookup(const char *word, const char *lang) {
     if (!word || !lang) return nullptr;

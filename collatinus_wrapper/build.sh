@@ -9,7 +9,8 @@ TARGET_OS=${TARGET_OS:-$(uname -s)}
 BUILD_DIR=../target/collatinus_wrapper/${TARGET_OS}
 mkdir -p ${BUILD_DIR}
 
-COLLATINUS_SRC=../thirdparty/collatinus/src
+COLLATINUS_DIR=${COLLATINUS_DIR:-../thirdparty/collatinus}
+COLLATINUS_SRC=${COLLATINUS_DIR}/src
 
 ALL_OBJS=""
 for src in \

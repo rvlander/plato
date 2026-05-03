@@ -26,11 +26,6 @@ const KEYBOARD_LAYOUTS_DIRNAME: &str = "keyboard-layouts";
 const DICTIONARIES_DIRNAME: &str = "dictionaries";
 const INPUT_HISTORY_SIZE: usize = 32;
 
-/// ISO 639-1 codes for languages supported by Collatinus.
-/// Derived from thirdparty/collatinus source (bin/data/lemmes.* files).
-/// Note: full morphological analysis (morphos.*) available for en, es, fr only;
-/// other languages provide lemma translations.
-const COLLATINUS_LANGUAGES: &[&str] = &["ca", "de", "en", "es", "eu", "fr", "gl", "it", "nl", "pt"];
 
 
 pub struct Context {
@@ -133,10 +128,9 @@ impl Context {
     }
 
     pub fn load_collatinus_dictionaries(&mut self) {
-        for lang in COLLATINUS_LANGUAGES {
-            let name = format!("Collatinus (la→{})", lang);
-            self.dictionaries.insert(name, Box::new(CollatinusDictionary::new(lang)));
-        }
+        let lang = self.settings.dictionary.collatinus_target.clone();
+        let name = format!("Collatinus (la→{})", lang);
+        self.dictionaries.insert(name, Box::new(CollatinusDictionary::new(&lang)));
     }
 
     pub fn record_input(&mut self, text: &str, id: ViewId) {

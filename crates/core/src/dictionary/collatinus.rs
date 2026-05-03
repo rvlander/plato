@@ -22,6 +22,7 @@ impl Dictionary for CollatinusDictionary {
             Err(_) => return Ok(vec![]),
         };
         let raw = unsafe {
+            collatinus_sys::collatinus_init(self.lang.as_ptr());
             collatinus_sys::collatinus_lookup(c_word.as_ptr(), self.lang.as_ptr())
         };
         if raw.is_null() {
