@@ -52,19 +52,19 @@ Position depends on where the selected word sits (determined by `selection_rect(
 - Word in **bottom half** → panel anchors to the **top** of the screen
 
 ```
-┌─────────────────────────────────────┐
-│  separator (1px black line)         │
-├─────────────────────────────────────┤
-│  HtmlDocument content area          │
-│  (scrollable if content overflows)  │
-├─────────────────────────────────────┤
-│  separator (1px black line)         │
-├─────────────────────────────────────┤
+┌──────────────────────────────────┬──┐
+│  separator (1px black line)      │  │
+├──────────────────────────────────┤  │
+│  HtmlDocument content area       │▓▓│ ← scrollbar (right edge)
+│                                  │  │
+├──────────────────────────────────┤  │
+│  separator (1px black line)      │  │
+├──────────────────────────────────┴──┤
 │  [Dict Name ▼]    [Open Dictionary] │  ← toolbar (SMALL_BAR_HEIGHT)
 └─────────────────────────────────────┘
 ```
 
-The content area supports vertical scrolling via swipe gestures (finger motion events) when the definition overflows the available height. The `HtmlDocument` location (page offset) is updated on scroll and the content area re-rendered accordingly.
+The content area supports vertical scrolling via a **scrollbar on the right edge of the panel** when the definition overflows the available height. The scrollbar is a thin draggable track — tapping or dragging it updates the `HtmlDocument` location (page offset) and re-renders the content area. No swipe gestures.
 
 Uses existing constants: `SMALL_BAR_HEIGHT`, `THICKNESS_MEDIUM`.
 Uses existing components: `RoundedButton` / `LabeledIcon`.
