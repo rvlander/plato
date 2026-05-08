@@ -116,11 +116,7 @@ impl Menu {
                          entries.iter().map(|e| font.plan(e.text(), None, None).width)
                                 .max().unwrap();
 
-        let entry_width = if kind == MenuKind::DropDown {
-            free_width.max(target.width() as i32).min(max_width)
-        } else {
-            free_width.min(max_width)
-        };
+        let entry_width = free_width.min(max_width);
 
         let (mut x_min, mut x_max) = if kind == MenuKind::SubMenu {
             let west_space = target.min.x;
