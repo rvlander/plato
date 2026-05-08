@@ -2758,6 +2758,11 @@ impl View for Reader {
                 true
             },
             Event::Gesture(GestureEvent::Swipe { dir, start, end }) if self.rect.includes(start) => {
+                if let Some(sel_rect) = self.selection_rect() {
+                    rq.add(RenderData::new(self.id, sel_rect, UpdateMode::Gui));
+                    self.selection = None;
+                    return true;
+                }
                 match self.view_port.zoom_mode {
                     ZoomMode::FitToPage | ZoomMode::FitToWidth => {
                         match dir {
@@ -2925,8 +2930,6 @@ impl View for Reader {
                 let dmax = (scale_by_dpi(RECT_DIST_JITTER, CURRENT_DEVICE.dpi) as i32).pow(2) as u32;
                 if let Some(sel_rect) = self.selection_rect() {
                     if position.rdist2(&sel_rect) >= dmax {
-                        rq.add(RenderData::new(self.id, sel_rect, UpdateMode::Gui));
-                        self.selection = None;
                         self.toggle_selection_menu(sel_rect, Some(false), rq, context);
                         self.toggle_definition_panel(Some(false), None, rq, context);
                     }
@@ -3149,6 +3152,12 @@ impl View for Reader {
                     return true;
                 }
 
+                if let Some(sel_rect) = self.selection_rect() {
+                    rq.add(RenderData::new(self.id, sel_rect, UpdateMode::Gui));
+                    self.selection = None;
+                    return true;
+                }
+
                 let mut nearest_link = None;
                 let mut dmin = u32::MAX;
                 let dmax = (scale_by_dpi(RECT_DIST_JITTER, CURRENT_DEVICE.dpi) as i32).pow(2) as u32;
@@ -3356,6 +3365,7 @@ impl View for Reader {
                         return true;
                     }
                     self.selection = None;
+                    rq.add(RenderData::new(self.id, sel_rect, UpdateMode::Gui));
                     self.toggle_selection_menu(sel_rect, Some(false), rq, context);
                     self.toggle_definition_panel(Some(false), None, rq, context);
                 }
@@ -4166,6 +4176,9 @@ impl View for Reader {
     }
 
     fn resize(&mut self, rect: Rectangle, hub: &Hub, rq: &mut RenderQueue, context: &mut Context) {
+        self.children.retain(|child| !child.is::<Menu>());
+        self.children.retain(|child| !child.is::<DefinitionPanel>());
+
         if !self.children.is_empty() {
             let dpi = CURRENT_DEVICE.dpi;
             let thickness = scale_by_dpi(THICKNESS_MEDIUM, dpi) as i32;
@@ -4173,9 +4186,6 @@ impl View for Reader {
             let (small_height, big_height) = (scale_by_dpi(SMALL_BAR_HEIGHT, dpi) as i32,
                                               scale_by_dpi(BIG_BAR_HEIGHT, dpi) as i32);
             let mut floating_layer_start = 0;
-
-            self.children.retain(|child| !child.is::<Menu>());
-            self.children.retain(|child| !child.is::<DefinitionPanel>());
 
             if self.children[0].is::<TopBar>() {
                 let top_bar_rect = rect![rect.min.x, rect.min.y,
