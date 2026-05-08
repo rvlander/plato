@@ -67,4 +67,8 @@ cd mupdf_wrapper
 ./build-kobo.sh
 cd ..
 
+cd collatinus_wrapper
+./build-kobo.sh
+cd ..
+
 cargo build --release --target=arm-unknown-linux-gnueabihf -p plato

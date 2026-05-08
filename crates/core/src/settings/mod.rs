@@ -179,6 +179,9 @@ pub struct ImportSettings {
 pub struct DictionarySettings {
     pub margin_width: i32,
     pub font_size: f32,
+    /// ISO 639-1 code for the Collatinus translation target language (e.g. "fr", "en").
+    /// Only one Collatinus dictionary is loaded for this language.
+    pub collatinus_target: String,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub languages: BTreeMap<String, Vec<String>>,
 }
@@ -188,6 +191,7 @@ impl Default for DictionarySettings {
         DictionarySettings {
             font_size: 11.0,
             margin_width: 4,
+            collatinus_target: "fr".to_string(),
             languages: BTreeMap::new(),
         }
     }
