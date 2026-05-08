@@ -4,10 +4,12 @@ use std::thread;
 use std::process::Command;
 use std::path::Path;
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 use plato_core::anyhow::{Error, Context as ResultExt, format_err};
 use plato_core::chrono::Local;
+use plato_core::collatinus_preload;
 use plato_core::framebuffer::{Framebuffer, KoboFramebuffer1, KoboFramebuffer2, UpdateMode};
 use plato_core::view::{View, Event, EntryId, EntryKind, ViewId, AppCmd, RenderData, RenderQueue, UpdateData};
 use plato_core::view::{handle_event, process_render_queue, wait_for_all};
@@ -294,6 +296,18 @@ pub fn run() -> Result<(), Error> {
             loop {
                 thread::sleep(AUTO_SUSPEND_REFRESH_INTERVAL);
                 tx6.send(Event::MightSuspend).ok();
+            }
+        });
+    }
+
+    {
+        let lang = context.settings.dictionary.collatinus_target.clone();
+        let ready = Arc::clone(&context.collatinus_ready);
+        let tx_collatinus = tx.clone();
+        thread::spawn(move || {
+            collatinus_preload(&lang, ready.clone());
+            if ready.load(std::sync::atomic::Ordering::Acquire) {
+                tx_collatinus.send(Event::CollatinusReady).ok();
             }
         });
     }
