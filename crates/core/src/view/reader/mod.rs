@@ -1795,6 +1795,22 @@ impl Reader {
             entries.push(EntryKind::Separator);
             entries.push(EntryKind::Command("Adjust Selection".to_string(), EntryId::AdjustSelection));
 
+            // Keep the selection menu on the opposite side of the definition panel so they don't overlap.
+            let rect = if let Some(idx) = locate_by_id(self, ViewId::DefinitionPanel) {
+                let panel_rect = *self.child(idx).rect();
+                let mut adjusted = rect;
+                if panel_rect.min.y <= self.rect.min.y {
+                    // Panel at top — force menu downward by zeroing north space
+                    adjusted.min.y = self.rect.min.y;
+                } else {
+                    // Panel at bottom — force menu upward by zeroing south space
+                    adjusted.max.y = self.rect.max.y;
+                }
+                adjusted
+            } else {
+                rect
+            };
+
             let selection_menu = Menu::new(rect, ViewId::SelectionMenu, MenuKind::Contextual, entries, context);
             rq.add(RenderData::new(selection_menu.id(), *selection_menu.rect(), UpdateMode::Gui));
             self.children.push(Box::new(selection_menu) as Box<dyn View>);
@@ -3606,7 +3622,7 @@ impl View for Reader {
                         entries.push(EntryKind::Separator);
                     }
                     entries.push(EntryKind::RadioButton(
-                        "All".to_string(),
+                        "All Dictionaries".to_string(),
                         EntryId::SwitchDictionary(String::new()),
                         current_target.is_none()));
                     let menu = Menu::new(rect, ViewId::DefinitionDictPicker, MenuKind::DropDown, entries, context);

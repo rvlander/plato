@@ -112,7 +112,7 @@ impl DefinitionPanel {
         let vsep_x = rect.max.x - toolbar_side - thickness;
 
         // [4] Dict picker label
-        let target_name = target.unwrap_or("All").to_string();
+        let target_name = target.unwrap_or("All Dictionaries").to_string();
         let picker_rect = rect![rect.min.x, toolbar_top, vsep_x, toolbar_bottom];
         let picker_label = Label::new(picker_rect, target_name, Align::Center)
             .event(Some(Event::ToggleNear(ViewId::DefinitionDictPicker, picker_rect)));
