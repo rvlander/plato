@@ -4048,8 +4048,10 @@ impl View for Reader {
                         panel.refresh(rq, context);
                         rq.add(RenderData::new(panel.id(), panel_rect, UpdateMode::Gui));
                     }
+                    true
+                } else {
+                    false
                 }
-                true
             },
             _ => false,
         }
