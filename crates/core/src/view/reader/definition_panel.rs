@@ -29,6 +29,8 @@ pub struct DefinitionPanel {
     page_locations: Vec<usize>,
     current_page: usize,
     pub target: Option<String>,
+    query: String,
+    language: String,
 }
 
 fn collect_page_locations(doc: &mut HtmlDocument) -> Vec<usize> {
@@ -143,6 +145,8 @@ impl DefinitionPanel {
             page_locations,
             current_page: 0,
             target: target.map(String::from),
+            query: query.to_string(),
+            language: language.to_string(),
         }
     }
 
@@ -159,6 +163,24 @@ impl DefinitionPanel {
         }
         if let Some(sb) = self.children[2].downcast_mut::<ScrollBar>() {
             sb.update(page, self.page_locations.len(), rq);
+        }
+    }
+
+    pub fn refresh(&mut self, rq: &mut RenderQueue, context: &mut Context) {
+        let content = query_to_content(&self.query, &self.language, false,
+                                       self.target.as_ref(), context);
+        self.doc.update(&content);
+        self.page_locations = collect_page_locations(&mut self.doc);
+        self.current_page = 0;
+
+        let pixmap = self.doc.pixmap(Location::Exact(0), 1.0, CURRENT_DEVICE.color_samples())
+                             .map(|(pm, _)| pm)
+                             .unwrap_or_else(|| Pixmap::new(1, 1, 1));
+        if let Some(image) = self.children[1].downcast_mut::<Image>() {
+            image.update(pixmap, rq);
+        }
+        if let Some(sb) = self.children[2].downcast_mut::<ScrollBar>() {
+            sb.update(0, self.page_locations.len(), rq);
         }
     }
 }
