@@ -135,7 +135,9 @@ impl Context {
     pub fn load_collatinus_dictionaries(&mut self) {
         let lang = self.settings.dictionary.collatinus_target.clone();
         let name = format!("Collatinus (la→{})", lang);
-        self.dictionaries.insert(name, Box::new(CollatinusDictionary::new(&lang)));
+        self.dictionaries.insert(name, Box::new(
+            CollatinusDictionary::new(&lang, Arc::clone(&self.collatinus_ready))
+        ));
     }
 
     pub fn record_input(&mut self, text: &str, id: ViewId) {
