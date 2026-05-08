@@ -20,6 +20,8 @@ use crate::view::dictionary::query_to_content;
 
 const VIEWER_STYLESHEET: &str = "css/dictionary.css";
 const USER_STYLESHEET: &str = "css/dictionary-user.css";
+const CHILD_IMAGE: usize = 1;
+const CHILD_SCROLLBAR: usize = 2;
 
 pub struct DefinitionPanel {
     id: Id,
@@ -150,36 +152,35 @@ impl DefinitionPanel {
         }
     }
 
-    pub fn go_to_page(&mut self, page: usize, rq: &mut RenderQueue) {
+    pub(super) fn go_to_page(&mut self, page: usize, rq: &mut RenderQueue) {
         if page >= self.page_locations.len() || page == self.current_page {
             return;
         }
         self.current_page = page;
         let loc = self.page_locations[page];
         if let Some((pixmap, _)) = self.doc.pixmap(Location::Exact(loc), 1.0, CURRENT_DEVICE.color_samples()) {
-            if let Some(image) = self.children[1].downcast_mut::<Image>() {
+            if let Some(image) = self.children[CHILD_IMAGE].downcast_mut::<Image>() {
                 image.update(pixmap, rq);
             }
         }
-        if let Some(sb) = self.children[2].downcast_mut::<ScrollBar>() {
+        if let Some(sb) = self.children[CHILD_SCROLLBAR].downcast_mut::<ScrollBar>() {
             sb.update(page, self.page_locations.len(), rq);
         }
     }
 
-    pub fn refresh(&mut self, rq: &mut RenderQueue, context: &mut Context) {
+    pub(super) fn refresh(&mut self, rq: &mut RenderQueue, context: &mut Context) {
         let content = query_to_content(&self.query, &self.language, false,
                                        self.target.as_ref(), context);
         self.doc.update(&content);
         self.page_locations = collect_page_locations(&mut self.doc);
         self.current_page = 0;
 
-        let pixmap = self.doc.pixmap(Location::Exact(0), 1.0, CURRENT_DEVICE.color_samples())
-                             .map(|(pm, _)| pm)
-                             .unwrap_or_else(|| Pixmap::new(1, 1, 1));
-        if let Some(image) = self.children[1].downcast_mut::<Image>() {
-            image.update(pixmap, rq);
+        if let Some((pixmap, _)) = self.doc.pixmap(Location::Exact(0), 1.0, CURRENT_DEVICE.color_samples()) {
+            if let Some(image) = self.children[CHILD_IMAGE].downcast_mut::<Image>() {
+                image.update(pixmap, rq);
+            }
         }
-        if let Some(sb) = self.children[2].downcast_mut::<ScrollBar>() {
+        if let Some(sb) = self.children[CHILD_SCROLLBAR].downcast_mut::<ScrollBar>() {
             sb.update(0, self.page_locations.len(), rq);
         }
     }
