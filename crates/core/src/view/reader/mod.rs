@@ -3812,6 +3812,7 @@ impl View for Reader {
                     let language = self.info.language.clone();
                     hub.send(Event::Select(EntryId::Launch(AppCmd::Dictionary { query, language }))).ok();
                 }
+                self.toggle_definition_panel(Some(false), None, rq, context);
                 self.selection = None;
                 true
             },
