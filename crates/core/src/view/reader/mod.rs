@@ -4041,6 +4041,16 @@ impl View for Reader {
                 }
                 true
             },
+            Event::CollatinusReady => {
+                if let Some(index) = locate_by_id(self, ViewId::DefinitionPanel) {
+                    let panel_rect = *self.child(index).rect();
+                    if let Some(panel) = self.child_mut(index).downcast_mut::<DefinitionPanel>() {
+                        panel.refresh(rq, context);
+                        rq.add(RenderData::new(panel.id(), panel_rect, UpdateMode::Gui));
+                    }
+                }
+                true
+            },
             _ => false,
         }
     }
