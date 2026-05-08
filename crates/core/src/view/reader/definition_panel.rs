@@ -121,8 +121,6 @@ impl DefinitionPanel {
                                   Event::Select(EntryId::OpenDictionaryFromPanel));
         children.push(Box::new(open_icon) as Box<dyn View>);
 
-        rq.add(RenderData::new(id, rect, UpdateMode::Gui));
-
         DefinitionPanel {
             id,
             rect,
