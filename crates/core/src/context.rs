@@ -1,6 +1,7 @@
 use crate::view::keyboard::Layout;
 use std::path::Path;
 use std::collections::{BTreeMap, VecDeque};
+use std::sync::{Arc, atomic::AtomicBool};
 use fxhash::FxHashMap;
 use chrono::Local;
 use globset::Glob;
@@ -21,7 +22,6 @@ use crate::device::CURRENT_DEVICE;
 use crate::library::Library;
 use crate::font::Fonts;
 use crate::rtc::Rtc;
-use std::sync::{Arc, atomic::AtomicBool};
 
 const KEYBOARD_LAYOUTS_DIRNAME: &str = "keyboard-layouts";
 const DICTIONARIES_DIRNAME: &str = "dictionaries";
@@ -49,6 +49,8 @@ pub struct Context {
     pub covered: bool,
     pub shared: bool,
     pub online: bool,
+    /// Shared flag set to `true` by the background init thread once Collatinus is ready.
+    /// Writers must use `Ordering::Release`; readers must use `Ordering::Acquire`.
     pub collatinus_ready: Arc<AtomicBool>,
 }
 
