@@ -64,8 +64,9 @@ impl DefinitionPanel {
         children.push(Box::new(top_sep) as Box<dyn View>);
 
         // Compute sub-rects
+        // content_bottom leaves room for: bot_sep, toolbar, bottom_border
         let content_top = rect.min.y + thickness;
-        let content_bottom = rect.max.y - small_height - thickness;
+        let content_bottom = rect.max.y - small_height - 2 * thickness;
         let content_rect = rect![rect.min.x, content_top, rect.max.x - scrollbar_width, content_bottom];
         let scrollbar_rect = rect![rect.max.x - scrollbar_width, content_top, rect.max.x, content_bottom];
 
@@ -104,22 +105,36 @@ impl DefinitionPanel {
             BLACK);
         children.push(Box::new(bot_sep) as Box<dyn View>);
 
-        // Toolbar
+        // Toolbar: sits between bot_sep and bottom_border
         let toolbar_top = content_bottom + thickness;
+        let toolbar_bottom = rect.max.y - thickness;
         let toolbar_side = small_height;
-        let picker_rect = rect![rect.min.x, toolbar_top, rect.max.x - toolbar_side, rect.max.y];
-        let open_rect = rect![rect.max.x - toolbar_side, toolbar_top, rect.max.x, rect.max.y];
+        let vsep_x = rect.max.x - toolbar_side - thickness;
 
         // [4] Dict picker label
         let target_name = target.unwrap_or("All").to_string();
+        let picker_rect = rect![rect.min.x, toolbar_top, vsep_x, toolbar_bottom];
         let picker_label = Label::new(picker_rect, target_name, Align::Center)
             .event(Some(Event::ToggleNear(ViewId::DefinitionDictPicker, picker_rect)));
         children.push(Box::new(picker_label) as Box<dyn View>);
 
-        // [5] Open-in-dictionary icon
+        // [5] Vertical separator between picker and open button
+        let vsep = Filler::new(
+            rect![vsep_x, toolbar_top, vsep_x + thickness, toolbar_bottom],
+            BLACK);
+        children.push(Box::new(vsep) as Box<dyn View>);
+
+        // [6] Open-in-dictionary icon
+        let open_rect = rect![vsep_x + thickness, toolbar_top, rect.max.x, toolbar_bottom];
         let open_icon = Icon::new("search", open_rect,
                                   Event::Select(EntryId::OpenDictionaryFromPanel));
         children.push(Box::new(open_icon) as Box<dyn View>);
+
+        // [7] Bottom border — separates panel from book content when panel is at top of screen
+        let bottom_border = Filler::new(
+            rect![rect.min.x, rect.max.y - thickness, rect.max.x, rect.max.y],
+            BLACK);
+        children.push(Box::new(bottom_border) as Box<dyn View>);
 
         DefinitionPanel {
             id,
