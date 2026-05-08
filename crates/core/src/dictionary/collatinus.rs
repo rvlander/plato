@@ -33,6 +33,11 @@ pub fn preload(lang: &str, ready: Arc<AtomicBool>) {
 
 impl Dictionary for CollatinusDictionary {
     fn lookup(&mut self, word: &str, _fuzzy: bool) -> Result<Vec<[String; 2]>, DictError> {
+        // Safety: this guard is not just a UX concern — it is the barrier that prevents
+        // calling into C++ before collatinus_init() has set g_lang. collatinus_lookup()
+        // calls ensure_initialized() internally, which reads g_lang at construction time;
+        // if preload() has not run yet, g_lang still holds its default "fr" regardless
+        // of this struct's lang field. Do not remove this check.
         if !self.ready.load(Ordering::Acquire) {
             return Ok(vec![
                 ["".to_string(),
