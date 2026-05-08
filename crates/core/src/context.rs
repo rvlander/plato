@@ -8,6 +8,7 @@ use walkdir::WalkDir;
 use rand_core::SeedableRng;
 use rand_xoshiro::Xoroshiro128Plus;
 use crate::dictionary::{Dictionary, load_dictionary_from_file};
+use crate::dictionary::collatinus::CollatinusDictionary;
 use crate::framebuffer::{Framebuffer, Display};
 use crate::view::ViewId;
 use crate::helpers::{load_json, IsHidden};
@@ -26,6 +27,7 @@ const DICTIONARIES_DIRNAME: &str = "dictionaries";
 const INPUT_HISTORY_SIZE: usize = 32;
 
 
+
 pub struct Context {
     pub fb: Box<dyn Framebuffer>,
     pub rtc: Option<Rtc>,
@@ -33,7 +35,7 @@ pub struct Context {
     pub settings: Settings,
     pub library: Library,
     pub fonts: Fonts,
-    pub dictionaries: BTreeMap<String, Dictionary>,
+    pub dictionaries: BTreeMap<String, Box<dyn Dictionary>>,
     pub keyboard_layouts: BTreeMap<String, Layout>,
     pub input_history: FxHashMap<ViewId, VecDeque<String>>,
     pub frontlight: Box<dyn Frontlight>,
@@ -120,9 +122,15 @@ impl Context {
                         .map(|s| s.to_string_lossy().into_owned())
                         .unwrap_or_default()
                 });
-                self.dictionaries.insert(name, dict);
+                self.dictionaries.insert(name, Box::new(dict));
             }
         }
+    }
+
+    pub fn load_collatinus_dictionaries(&mut self) {
+        let lang = self.settings.dictionary.collatinus_target.clone();
+        let name = format!("Collatinus (la→{})", lang);
+        self.dictionaries.insert(name, Box::new(CollatinusDictionary::new(&lang)));
     }
 
     pub fn record_input(&mut self, text: &str, id: ViewId) {

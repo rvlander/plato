@@ -25,6 +25,8 @@ cp libs/libgumbo.so dist/libs/libgumbo.so.2
 cp libs/libdjvulibre.so dist/libs/libdjvulibre.so.21
 cp libs/libmupdf.so dist/libs
 
+cp -R thirdparty/collatinus/bin/data dist/data
+
 cp -R hyphenation-patterns dist
 cp -R keyboard-layouts dist
 cp -R bin dist

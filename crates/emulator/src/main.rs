@@ -248,6 +248,7 @@ fn main() -> Result<(), Error> {
     }
 
     context.load_dictionaries();
+    context.load_collatinus_dictionaries();
     context.load_keyboard_layouts();
 
     let (tx, rx) = mpsc::channel();

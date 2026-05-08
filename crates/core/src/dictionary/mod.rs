@@ -6,11 +6,20 @@
 mod dictreader;
 mod errors;
 mod indexing;
+mod collatinus_sys;
+pub mod collatinus;
+
+pub use errors::DictError;
 
 use std::path::Path;
 
 use self::dictreader::DictReader;
 use self::indexing::IndexReader;
+
+/// A trait for dictionary implementations.
+pub trait Dictionary {
+    fn lookup(&mut self, word: &str, fuzzy: bool) -> Result<Vec<[String; 2]>, errors::DictError>;
+}
 
 /// A dictionary wrapper.
 ///
@@ -18,7 +27,7 @@ use self::indexing::IndexReader;
 /// `*.index` file with a list of all headwords and with positions in the dict file + length
 /// information. It provides a convenience function to look up headwords directly, without caring
 /// about the details of the index and the underlying dict format.
-pub struct Dictionary {
+pub struct DictdDictionary {
     content: Box<dyn DictReader>,
     index: Box<dyn IndexReader>,
     metadata: Metadata,
@@ -32,7 +41,7 @@ pub struct Metadata {
     pub case_sensitive: bool,
 }
 
-impl Dictionary {
+impl DictdDictionary {
     /// Look up a word in a dictionary.
     ///
     /// Words are looked up in the index and then retrieved from the dict file. If no word was
@@ -94,7 +103,7 @@ impl Dictionary {
 ///
 /// A dictionary is made of an index and a dictionary (data) file, both are opened from the given
 /// input file names. Gzipped files with the suffix `.dz` will be handled automatically.
-pub fn load_dictionary_from_file<P: AsRef<Path>>(content_path: P, index_path: P) -> Result<Dictionary, errors::DictError> {
+pub fn load_dictionary_from_file<P: AsRef<Path>>(content_path: P, index_path: P) -> Result<DictdDictionary, errors::DictError> {
     let content = dictreader::load_dict(content_path)?;
     let index = Box::new(indexing::parse_index_from_file(index_path, true)?);
     Ok(load_dictionary(content, index))
@@ -106,7 +115,7 @@ pub fn load_dictionary_from_file<P: AsRef<Path>>(content_path: P, index_path: P)
 /// function allows abstraction from the underlying source by only requiring a
 /// `dictReader` as trait object. This way, dictionaries from RAM or similar can be
 /// implemented.
-pub fn load_dictionary(content: Box<dyn DictReader>, index: Box<dyn IndexReader>) -> Dictionary {
+pub fn load_dictionary(content: Box<dyn DictReader>, index: Box<dyn IndexReader>) -> DictdDictionary {
     let all_chars = !index.find("00-database-allchars", false).is_empty();
     let word = if all_chars {
         "00-database-case-sensitive"
@@ -114,7 +123,13 @@ pub fn load_dictionary(content: Box<dyn DictReader>, index: Box<dyn IndexReader>
         "00databasecasesensitive"
     };
     let case_sensitive = !index.find(word, false).is_empty();
-    Dictionary { content, index, metadata: Metadata { all_chars, case_sensitive } }
+    DictdDictionary { content, index, metadata: Metadata { all_chars, case_sensitive } }
+}
+
+impl Dictionary for DictdDictionary {
+    fn lookup(&mut self, word: &str, fuzzy: bool) -> Result<Vec<[String; 2]>, errors::DictError> {
+        DictdDictionary::lookup(self, word, fuzzy)
+    }
 }
 
 #[cfg(test)]
@@ -126,7 +141,7 @@ mod tests {
     const PATH_CASE_INSENSITIVE_DICT: &str = "src/dictionary/testdata/case_insensitive_dict.dict";
     const PATH_CASE_INSENSITIVE_INDEX: &str = "src/dictionary/testdata/case_insensitive_dict.index";
 
-    fn assert_dict_word_exists(mut dict: Dictionary, headword: &str, definition: &str) -> Dictionary {
+    fn assert_dict_word_exists(mut dict: DictdDictionary, headword: &str, definition: &str) -> DictdDictionary {
         let r = dict.lookup(headword, false);
         assert!(r.is_ok());
         let search = r.unwrap();
@@ -197,5 +212,12 @@ mod tests {
         assert_eq!(search[0][0], "Bar");
         assert!(search[0][1].contains("test for case-sensitivity"));
     }
+}
+
+#[cfg(test)]
+mod trait_tests {
+    use super::*;
+
+    fn _assert_trait_object(_d: &dyn Dictionary) {}
 }
 

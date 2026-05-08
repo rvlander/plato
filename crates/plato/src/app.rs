@@ -229,6 +229,7 @@ pub fn run() -> Result<(), Error> {
         context.batch_import();
     }
     context.load_dictionaries();
+    context.load_collatinus_dictionaries();
     context.load_keyboard_layouts();
 
     let mut paths = Vec::new();
