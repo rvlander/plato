@@ -21,6 +21,7 @@ use crate::device::CURRENT_DEVICE;
 use crate::library::Library;
 use crate::font::Fonts;
 use crate::rtc::Rtc;
+use std::sync::{Arc, atomic::AtomicBool};
 
 const KEYBOARD_LAYOUTS_DIRNAME: &str = "keyboard-layouts";
 const DICTIONARIES_DIRNAME: &str = "dictionaries";
@@ -48,6 +49,7 @@ pub struct Context {
     pub covered: bool,
     pub shared: bool,
     pub online: bool,
+    pub collatinus_ready: Arc<AtomicBool>,
 }
 
 impl Context {
@@ -62,7 +64,8 @@ impl Context {
                   keyboard_layouts: BTreeMap::new(), input_history: FxHashMap::default(),
                   battery, frontlight, lightsensor, notification_index: 0,
                   kb_rect: Rectangle::default(), rng, plugged: false, covered: false,
-                  shared: false, online: false }
+                  shared: false, online: false,
+                  collatinus_ready: Arc::new(AtomicBool::new(false)) }
     }
 
     pub fn batch_import(&mut self) {
