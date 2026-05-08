@@ -14,7 +14,7 @@ get_url() {
 		freetype2) echo "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.1.tar.gz" ;;
 		harfbuzz)  echo "https://github.com/harfbuzz/harfbuzz/archive/12.3.0.tar.gz" ;;
 		# Latin morphological analysis
-		collatinus) echo "https://github.com/rvlander/collatinus/archive/refs/heads/no-qt.tar.gz" ;;
+		collatinus) echo "https://github.com/rvlander/collatinus/archive/refs/heads/no-qt-improve-loading-perf.tar.gz" ;;
 		# Documents
 		gumbo)     echo "https://github.com/google/gumbo-parser/archive/v0.10.1.tar.gz" ;;
 		djvulibre) echo "http://downloads.sourceforge.net/djvu/djvulibre-3.5.29.tar.gz" ;;
