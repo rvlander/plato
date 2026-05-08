@@ -2920,6 +2920,19 @@ impl View for Reader {
                 }
                 true
             },
+            Event::Device(DeviceEvent::Finger { status: FingerStatus::Down, position, .. })
+                if self.state == State::Idle && self.selection.is_some() && self.rect.includes(position) => {
+                let dmax = (scale_by_dpi(RECT_DIST_JITTER, CURRENT_DEVICE.dpi) as i32).pow(2) as u32;
+                if let Some(sel_rect) = self.selection_rect() {
+                    if position.rdist2(&sel_rect) >= dmax {
+                        rq.add(RenderData::new(self.id, sel_rect, UpdateMode::Gui));
+                        self.selection = None;
+                        self.toggle_selection_menu(sel_rect, Some(false), rq, context);
+                        self.toggle_definition_panel(Some(false), None, rq, context);
+                    }
+                }
+                false
+            },
             Event::Device(DeviceEvent::Finger { position, status: FingerStatus::Motion, id, .. }) if self.state == State::Selection(id) => {
                 let mut nearest_word = None;
                 let mut dmin = u32::MAX;
@@ -3333,15 +3346,18 @@ impl View for Reader {
                 let mut dmin = u32::MAX;
                 let dmax = (scale_by_dpi(RECT_DIST_JITTER, CURRENT_DEVICE.dpi) as i32).pow(2) as u32;
 
-                if let Some(rect) = self.selection_rect() {
-                    let d = center.rdist2(&rect);
+                if let Some(sel_rect) = self.selection_rect() {
+                    let d = center.rdist2(&sel_rect);
                     if d < dmax {
                         self.state = State::Idle;
                         let radius = scale_by_dpi(24.0, CURRENT_DEVICE.dpi) as i32;
                         self.toggle_selection_menu(Rectangle::from_disk(center, radius), Some(true), rq, context);
                         self.toggle_definition_panel(Some(true), None, rq, context);
+                        return true;
                     }
-                    return true;
+                    self.selection = None;
+                    self.toggle_selection_menu(sel_rect, Some(false), rq, context);
+                    self.toggle_definition_panel(Some(false), None, rq, context);
                 }
 
                 for chunk in &self.chunks {
@@ -4159,6 +4175,7 @@ impl View for Reader {
             let mut floating_layer_start = 0;
 
             self.children.retain(|child| !child.is::<Menu>());
+            self.children.retain(|child| !child.is::<DefinitionPanel>());
 
             if self.children[0].is::<TopBar>() {
                 let top_bar_rect = rect![rect.min.x, rect.min.y,

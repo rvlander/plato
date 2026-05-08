@@ -20,7 +20,6 @@ use crate::view::dictionary::query_to_content;
 
 const VIEWER_STYLESHEET: &str = "css/dictionary.css";
 const USER_STYLESHEET: &str = "css/dictionary-user.css";
-const SCROLLBAR_WIDTH: f32 = 14.0;
 
 pub struct DefinitionPanel {
     id: Id,
@@ -55,7 +54,7 @@ impl DefinitionPanel {
         let dpi = CURRENT_DEVICE.dpi;
         let small_height = scale_by_dpi(SMALL_BAR_HEIGHT, dpi) as i32;
         let thickness = scale_by_dpi(THICKNESS_MEDIUM, dpi) as i32;
-        let scrollbar_width = scale_by_dpi(SCROLLBAR_WIDTH, dpi) as i32;
+        let scrollbar_width = small_height;
 
         // [0] Top separator
         let top_sep = Filler::new(
