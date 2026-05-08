@@ -4,6 +4,7 @@ mod results_bar;
 mod margin_cropper;
 mod chapter_label;
 mod results_label;
+mod definition_panel;
 
 use std::thread;
 use std::sync::{Arc, Mutex};
@@ -34,6 +35,7 @@ use super::top_bar::TopBar;
 use self::tool_bar::ToolBar;
 use self::bottom_bar::BottomBar;
 use self::results_bar::ResultsBar;
+use self::definition_panel::DefinitionPanel;
 use crate::view::common::{locate, rlocate, locate_by_id};
 use crate::view::common::{toggle_main_menu, toggle_battery_menu, toggle_clock_menu};
 use crate::view::filler::Filler;
@@ -1784,7 +1786,6 @@ impl Reader {
             ];
 
             entries.push(EntryKind::Separator);
-            entries.push(EntryKind::Command("Define".to_string(), EntryId::DefineSelection));
             entries.push(EntryKind::Command("Search".to_string(), EntryId::SearchForSelection));
 
             if self.info.reader.as_ref().map_or(false, |r| !r.page_names.is_empty()) {
@@ -1794,9 +1795,64 @@ impl Reader {
             entries.push(EntryKind::Separator);
             entries.push(EntryKind::Command("Adjust Selection".to_string(), EntryId::AdjustSelection));
 
+            // Keep the selection menu on the opposite side of the definition panel so they don't overlap.
+            // Use definition_panel_rect() directly since the panel may not exist yet when this runs.
+            let rect = {
+                let panel_rect = self.definition_panel_rect();
+                let mut adjusted = rect;
+                if panel_rect.min.y <= self.rect.min.y {
+                    // Panel at top — force menu downward by zeroing north space
+                    adjusted.min.y = self.rect.min.y;
+                } else {
+                    // Panel at bottom — force menu upward by zeroing south space
+                    adjusted.max.y = self.rect.max.y;
+                }
+                adjusted
+            };
+
             let selection_menu = Menu::new(rect, ViewId::SelectionMenu, MenuKind::Contextual, entries, context);
             rq.add(RenderData::new(selection_menu.id(), *selection_menu.rect(), UpdateMode::Gui));
             self.children.push(Box::new(selection_menu) as Box<dyn View>);
+        }
+    }
+
+    fn definition_panel_rect(&self) -> Rectangle {
+        let panel_height = self.rect.height() as i32 / 3;
+        let sel_mid_y = self.selection_rect()
+                           .map(|r| r.min.y + r.height() as i32 / 2)
+                           .unwrap_or(self.rect.min.y + self.rect.height() as i32 / 2);
+        let reader_mid_y = self.rect.min.y + self.rect.height() as i32 / 2;
+        if sel_mid_y < reader_mid_y {
+            rect![self.rect.min.x, self.rect.max.y - panel_height,
+                  self.rect.max.x, self.rect.max.y]
+        } else {
+            rect![self.rect.min.x, self.rect.min.y,
+                  self.rect.max.x, self.rect.min.y + panel_height]
+        }
+    }
+
+    pub fn toggle_definition_panel(&mut self, enable: Option<bool>, target: Option<&str>, rq: &mut RenderQueue, context: &mut Context) {
+        if let Some(index) = locate_by_id(self, ViewId::DefinitionPanel) {
+            if enable == Some(true) {
+                return;
+            }
+            rq.add(RenderData::expose(*self.child(index).rect(), UpdateMode::Gui));
+            self.children.remove(index);
+        } else {
+            if enable == Some(false) {
+                return;
+            }
+            if let Some(text) = self.selected_text() {
+                let query = text.trim_matches(|c: char| !c.is_alphanumeric()).to_string();
+                if query.is_empty() {
+                    return;
+                }
+                let language = self.info.language.clone();
+                let panel_rect = self.definition_panel_rect();
+                let panel = DefinitionPanel::new(panel_rect, &query, &language, target, rq, context);
+                rq.add(RenderData::new(panel.id(), *panel.rect(), UpdateMode::Gui));
+                self.children.push(Box::new(panel) as Box<dyn View>);
+            }
         }
     }
 
@@ -2702,6 +2758,11 @@ impl View for Reader {
                 true
             },
             Event::Gesture(GestureEvent::Swipe { dir, start, end }) if self.rect.includes(start) => {
+                if let Some(sel_rect) = self.selection_rect() {
+                    rq.add(RenderData::new(self.id, sel_rect, UpdateMode::Gui));
+                    self.selection = None;
+                    return true;
+                }
                 match self.view_port.zoom_mode {
                     ZoomMode::FitToPage | ZoomMode::FitToWidth => {
                         match dir {
@@ -2864,6 +2925,17 @@ impl View for Reader {
                 }
                 true
             },
+            Event::Device(DeviceEvent::Finger { status: FingerStatus::Down, position, .. })
+                if self.state == State::Idle && self.selection.is_some() && self.rect.includes(position) => {
+                let dmax = (scale_by_dpi(RECT_DIST_JITTER, CURRENT_DEVICE.dpi) as i32).pow(2) as u32;
+                if let Some(sel_rect) = self.selection_rect() {
+                    if position.rdist2(&sel_rect) >= dmax {
+                        self.toggle_selection_menu(sel_rect, Some(false), rq, context);
+                        self.toggle_definition_panel(Some(false), None, rq, context);
+                    }
+                }
+                false
+            },
             Event::Device(DeviceEvent::Finger { position, status: FingerStatus::Motion, id, .. }) if self.state == State::Selection(id) => {
                 let mut nearest_word = None;
                 let mut dmin = u32::MAX;
@@ -2961,6 +3033,7 @@ impl View for Reader {
                 self.state = State::Idle;
                 let radius = scale_by_dpi(24.0, CURRENT_DEVICE.dpi) as i32;
                 self.toggle_selection_menu(Rectangle::from_disk(position, radius), Some(true), rq, context);
+                self.toggle_definition_panel(Some(true), None, rq, context);
                 true
             },
             Event::Gesture(GestureEvent::Tap(center)) if self.state == State::AdjustSelection && self.rect.includes(center) => {
@@ -3076,6 +3149,12 @@ impl View for Reader {
             },
             Event::Gesture(GestureEvent::Tap(center)) if self.rect.includes(center) => {
                 if self.focus.is_some() {
+                    return true;
+                }
+
+                if let Some(sel_rect) = self.selection_rect() {
+                    rq.add(RenderData::new(self.id, sel_rect, UpdateMode::Gui));
+                    self.selection = None;
                     return true;
                 }
 
@@ -3276,14 +3355,19 @@ impl View for Reader {
                 let mut dmin = u32::MAX;
                 let dmax = (scale_by_dpi(RECT_DIST_JITTER, CURRENT_DEVICE.dpi) as i32).pow(2) as u32;
 
-                if let Some(rect) = self.selection_rect() {
-                    let d = center.rdist2(&rect);
+                if let Some(sel_rect) = self.selection_rect() {
+                    let d = center.rdist2(&sel_rect);
                     if d < dmax {
                         self.state = State::Idle;
                         let radius = scale_by_dpi(24.0, CURRENT_DEVICE.dpi) as i32;
                         self.toggle_selection_menu(Rectangle::from_disk(center, radius), Some(true), rq, context);
+                        self.toggle_definition_panel(Some(true), None, rq, context);
+                        return true;
                     }
-                    return true;
+                    self.selection = None;
+                    rq.add(RenderData::new(self.id, sel_rect, UpdateMode::Gui));
+                    self.toggle_selection_menu(sel_rect, Some(false), rq, context);
+                    self.toggle_definition_panel(Some(false), None, rq, context);
                 }
 
                 for chunk in &self.chunks {
@@ -3545,6 +3629,33 @@ impl View for Reader {
                 self.toggle_page_menu(rect, None, rq, context);
                 true
             },
+            Event::ToggleNear(ViewId::DefinitionDictPicker, rect) => {
+                if let Some(index) = locate_by_id(self, ViewId::DefinitionDictPicker) {
+                    rq.add(RenderData::expose(*self.child(index).rect(), UpdateMode::Gui));
+                    self.children.remove(index);
+                } else {
+                    let current_target = locate_by_id(self, ViewId::DefinitionPanel)
+                        .and_then(|idx| self.child(idx).downcast_ref::<DefinitionPanel>())
+                        .and_then(|panel| panel.target.clone());
+                    let mut entries: Vec<EntryKind> = context.dictionaries.keys()
+                        .map(|k| EntryKind::RadioButton(
+                            k.to_string(),
+                            EntryId::SwitchDictionary(k.to_string()),
+                            current_target.as_deref() == Some(k.as_str())))
+                        .collect();
+                    if !entries.is_empty() {
+                        entries.push(EntryKind::Separator);
+                    }
+                    entries.push(EntryKind::RadioButton(
+                        "All Dictionaries".to_string(),
+                        EntryId::SwitchDictionary(String::new()),
+                        current_target.is_none()));
+                    let menu = Menu::new(rect, ViewId::DefinitionDictPicker, MenuKind::Contextual, entries, context);
+                    rq.add(RenderData::new(menu.id(), *menu.rect(), UpdateMode::Gui));
+                    self.children.push(Box::new(menu) as Box<dyn View>);
+                }
+                true
+            },
             Event::Close(ViewId::MainMenu) => {
                 toggle_main_menu(self, Rectangle::default(), Some(false), rq, context);
                 true
@@ -3568,6 +3679,7 @@ impl View for Reader {
                 true
             },
             Event::Close(ViewId::SelectionMenu) => {
+                self.toggle_definition_panel(Some(false), None, rq, context);
                 if self.state == State::Idle && self.target_annotation.is_none() {
                     if let Some(rect) = self.selection_rect() {
                         self.selection = None;
@@ -3715,15 +3827,6 @@ impl View for Reader {
 
                 true
             },
-            Event::Select(EntryId::DefineSelection) => {
-                if let Some(text) = self.selected_text() {
-                    let query = text.trim_matches(|c: char| !c.is_alphanumeric()).to_string();
-                    let language = self.info.language.clone();
-                    hub.send(Event::Select(EntryId::Launch(AppCmd::Dictionary { query, language }))).ok();
-                }
-                self.selection = None;
-                true
-            },
             Event::Select(EntryId::SearchForSelection) => {
                 if let Some(text) = self.selected_text() {
                     let text = text.trim_matches(|c: char| !c.is_alphanumeric());
@@ -3742,6 +3845,22 @@ impl View for Reader {
                     rq.add(RenderData::new(self.id, rect, UpdateMode::Gui));
                 }
                 self.selection = None;
+                true
+            },
+            Event::Select(EntryId::OpenDictionaryFromPanel) => {
+                if let Some(text) = self.selected_text() {
+                    let query = text.trim_matches(|c: char| !c.is_alphanumeric()).to_string();
+                    let language = self.info.language.clone();
+                    hub.send(Event::Select(EntryId::Launch(AppCmd::Dictionary { query, language }))).ok();
+                }
+                self.toggle_definition_panel(Some(false), None, rq, context);
+                self.selection = None;
+                true
+            },
+            Event::Select(EntryId::SwitchDictionary(ref name)) => {
+                let target = if name.is_empty() { None } else { Some(name.as_str()) };
+                self.toggle_definition_panel(Some(false), None, rq, context);
+                self.toggle_definition_panel(Some(true), target, rq, context);
                 true
             },
             Event::Select(EntryId::GoToSelectedPageName) => {
@@ -4057,6 +4176,9 @@ impl View for Reader {
     }
 
     fn resize(&mut self, rect: Rectangle, hub: &Hub, rq: &mut RenderQueue, context: &mut Context) {
+        self.children.retain(|child| !child.is::<Menu>());
+        self.children.retain(|child| !child.is::<DefinitionPanel>());
+
         if !self.children.is_empty() {
             let dpi = CURRENT_DEVICE.dpi;
             let thickness = scale_by_dpi(THICKNESS_MEDIUM, dpi) as i32;
@@ -4064,8 +4186,6 @@ impl View for Reader {
             let (small_height, big_height) = (scale_by_dpi(SMALL_BAR_HEIGHT, dpi) as i32,
                                               scale_by_dpi(BIG_BAR_HEIGHT, dpi) as i32);
             let mut floating_layer_start = 0;
-
-            self.children.retain(|child| !child.is::<Menu>());
 
             if self.children[0].is::<TopBar>() {
                 let top_bar_rect = rect![rect.min.x, rect.min.y,

@@ -107,7 +107,11 @@ impl Menu {
 
         let mut y_pos = y_start + dir * (border_space - border_thickness);
 
-        let max_width = 2 * width as i32 / 3;
+        let max_width = if kind == MenuKind::DropDown {
+            width as i32
+        } else {
+            2 * width as i32 / 3
+        };
         let free_width = padding + 2 * border_thickness +
                          entries.iter().map(|e| font.plan(e.text(), None, None).width)
                                 .max().unwrap();

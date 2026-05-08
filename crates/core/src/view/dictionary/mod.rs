@@ -42,7 +42,7 @@ pub struct Dictionary {
     focus: Option<ViewId>,
 }
 
-fn query_to_content(query: &str, language: &String, fuzzy: bool, target: Option<&String>, context: &mut Context) -> String {
+pub(crate) fn query_to_content(query: &str, language: &String, fuzzy: bool, target: Option<&String>, context: &mut Context) -> String {
     let mut content = String::new();
 
     for (name, dict) in context.dictionaries.iter_mut() {
