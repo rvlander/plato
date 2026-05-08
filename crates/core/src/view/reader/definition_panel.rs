@@ -1,9 +1,9 @@
 use crate::device::CURRENT_DEVICE;
 use crate::unit::scale_by_dpi;
-use crate::framebuffer::{Framebuffer, UpdateMode, Pixmap};
+use crate::framebuffer::{Framebuffer, Pixmap};
 use crate::input::DeviceEvent;
 use crate::gesture::GestureEvent;
-use crate::view::{View, Event, Hub, Bus, Id, ID_FEEDER, RenderQueue, RenderData};
+use crate::view::{View, Event, Hub, Bus, Id, ID_FEEDER, RenderQueue};
 use crate::view::{ViewId, EntryId, SMALL_BAR_HEIGHT, THICKNESS_MEDIUM, Align};
 use crate::document::{Location, Document};
 use crate::document::html::HtmlDocument;
@@ -49,7 +49,7 @@ fn collect_page_locations(doc: &mut HtmlDocument) -> Vec<usize> {
 
 impl DefinitionPanel {
     pub fn new(rect: Rectangle, query: &str, language: &str, target: Option<&str>,
-               rq: &mut RenderQueue, context: &mut Context) -> DefinitionPanel {
+               _rq: &mut RenderQueue, context: &mut Context) -> DefinitionPanel {
         let id = ID_FEEDER.next();
         let mut children: Vec<Box<dyn View>> = Vec::new();
         let dpi = CURRENT_DEVICE.dpi;
