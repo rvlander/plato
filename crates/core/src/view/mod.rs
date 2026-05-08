@@ -17,6 +17,7 @@ pub mod label;
 pub mod button;
 pub mod rounded_button;
 pub mod slider;
+pub mod scroll_bar;
 pub mod input_field;
 pub mod page_label;
 pub mod named_input;
@@ -386,6 +387,8 @@ pub enum ViewId {
     MainMenu,
     TitleMenu,
     SelectionMenu,
+    DefinitionPanel,
+    DefinitionDictPicker,
     AnnotationMenu,
     BatteryMenu,
     ClockMenu,
@@ -538,9 +541,10 @@ pub enum EntryId {
     RemovePageName,
     HighlightSelection,
     AnnotateSelection,
-    DefineSelection,
     SearchForSelection,
     AdjustSelection,
+    OpenDictionaryFromPanel,
+    SwitchDictionary(String),
     Annotations,
     Bookmarks,
     RemoveAnnotation([TextLocation; 2]),
