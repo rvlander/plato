@@ -303,11 +303,14 @@ pub fn run() -> Result<(), Error> {
         let lang = context.settings.dictionary.collatinus_target.clone();
         let ready = Arc::clone(&context.collatinus_ready);
         let tx_collatinus = tx.clone();
-        thread::spawn(move || {
-            collatinus_preload(&lang);
-            ready.store(true, Ordering::Release);
-            tx_collatinus.send(Event::CollatinusReady).ok();
-        });
+        thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(move || {
+                collatinus_preload(&lang);
+                ready.store(true, Ordering::Release);
+                tx_collatinus.send(Event::CollatinusReady).ok();
+            })
+            .ok();
     }
 
     context.fb.set_inverted(context.settings.inverted);
