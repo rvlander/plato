@@ -365,7 +365,6 @@ pub enum Event {
     Back,
     Quit,
     WakeUp,
-    InitCollatinus,
     CollatinusReady,
 }
 

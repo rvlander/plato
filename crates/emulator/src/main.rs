@@ -45,7 +45,6 @@ use plato_core::lightsensor::LightSensor;
 use plato_core::library::Library;
 use plato_core::font::Fonts;
 use plato_core::context::Context;
-use plato_core::collatinus_preload;
 use std::sync::atomic::Ordering;
 use plato_core::pt;
 use plato_core::png;
@@ -272,11 +271,11 @@ fn main() -> Result<(), Error> {
         }
     });
 
-    let tx4 = tx.clone();
-    thread::spawn(move || {
-        thread::sleep(Duration::from_millis(500));
-        tx4.send(Event::InitCollatinus).ok();
-    });
+    // On the emulator (macOS) background thread Collatinus init hangs due to
+    // platform threading constraints. Mark ready immediately so the panel
+    // calls collatinus_lookup() directly (which will return empty results
+    // if data files aren't present, with no loading indicator).
+    context.collatinus_ready.store(true, Ordering::Release);
 
     let mut history: Vec<Box<dyn View>> = Vec::new();
     let mut rq = RenderQueue::new();
@@ -568,12 +567,6 @@ fn main() -> Result<(), Error> {
                     };
                     let notif = Notification::new(msg, &tx, &mut rq, &mut context);
                     view.children_mut().push(Box::new(notif) as Box<dyn View>);
-                },
-                Event::InitCollatinus => {
-                    let lang = context.settings.dictionary.collatinus_target.clone();
-                    collatinus_preload(&lang);
-                    context.collatinus_ready.store(true, Ordering::Release);
-                    handle_event(view.as_mut(), &Event::CollatinusReady, &tx, &mut bus, &mut rq, &mut context);
                 },
                 Event::Notify(msg) => {
                     let notif = Notification::new(msg, &tx, &mut rq, &mut context);

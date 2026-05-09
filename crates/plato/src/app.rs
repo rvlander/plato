@@ -300,10 +300,13 @@ pub fn run() -> Result<(), Error> {
     }
 
     {
+        let lang = context.settings.dictionary.collatinus_target.clone();
+        let ready = Arc::clone(&context.collatinus_ready);
         let tx_collatinus = tx.clone();
         thread::spawn(move || {
-            thread::sleep(Duration::from_millis(500));
-            tx_collatinus.send(Event::InitCollatinus).ok();
+            collatinus_preload(&lang);
+            ready.store(true, Ordering::Release);
+            tx_collatinus.send(Event::CollatinusReady).ok();
         });
     }
 
@@ -955,12 +958,6 @@ pub fn run() -> Result<(), Error> {
                     let (tx, _rx) = mpsc::channel();
                     entry.view.handle_event(&evt, &tx, &mut VecDeque::new(), &mut RenderQueue::new(), &mut context);
                 }
-            },
-            Event::InitCollatinus => {
-                let lang = context.settings.dictionary.collatinus_target.clone();
-                collatinus_preload(&lang);
-                context.collatinus_ready.store(true, Ordering::Release);
-                handle_event(view.as_mut(), &Event::CollatinusReady, &tx, &mut bus, &mut rq, &mut context);
             },
             Event::Notify(msg) => {
                 let notif = Notification::new(msg, &tx, &mut rq, &mut context);
