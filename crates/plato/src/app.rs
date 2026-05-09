@@ -300,17 +300,11 @@ pub fn run() -> Result<(), Error> {
     }
 
     {
-        let lang = context.settings.dictionary.collatinus_target.clone();
-        let ready = Arc::clone(&context.collatinus_ready);
         let tx_collatinus = tx.clone();
-        thread::Builder::new()
-            .stack_size(8 * 1024 * 1024)
-            .spawn(move || {
-                collatinus_preload(&lang);
-                ready.store(true, Ordering::Release);
-                tx_collatinus.send(Event::CollatinusReady).ok();
-            })
-            .ok();
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(500));
+            tx_collatinus.send(Event::InitCollatinus).ok();
+        });
     }
 
     context.fb.set_inverted(context.settings.inverted);
@@ -962,6 +956,12 @@ pub fn run() -> Result<(), Error> {
                     entry.view.handle_event(&evt, &tx, &mut VecDeque::new(), &mut RenderQueue::new(), &mut context);
                 }
             },
+            Event::InitCollatinus => {
+                let lang = context.settings.dictionary.collatinus_target.clone();
+                collatinus_preload(&lang);
+                context.collatinus_ready.store(true, Ordering::Release);
+                handle_event(view.as_mut(), &Event::CollatinusReady, &tx, &mut bus, &mut rq, &mut context);
+            },
             Event::Notify(msg) => {
                 let notif = Notification::new(msg, &tx, &mut rq, &mut context);
                 view.children_mut().push(Box::new(notif) as Box<dyn View>);
@@ -990,9 +990,6 @@ pub fn run() -> Result<(), Error> {
                 }
             },
             _ => {
-                if matches!(&evt, Event::CollatinusReady) {
-                    tx.send(Event::Notify("CollatinusReady reached app loop".to_string())).ok();
-                }
                 handle_event(view.as_mut(), &evt, &tx, &mut bus, &mut rq, &mut context);
             },
         }

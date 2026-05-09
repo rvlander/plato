@@ -4042,8 +4042,6 @@ impl View for Reader {
                 true
             },
             Event::CollatinusReady => {
-                let has_panel = locate_by_id(self, ViewId::DefinitionPanel).is_some();
-                hub.send(Event::Notify(format!("Collatinus ready (panel={})", has_panel))).ok();
                 if let Some(index) = locate_by_id(self, ViewId::DefinitionPanel) {
                     let panel_rect = *self.child(index).rect();
                     if let Some(panel) = self.child_mut(index).downcast_mut::<DefinitionPanel>() {
