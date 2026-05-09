@@ -81,10 +81,16 @@ impl DefinitionPanel {
         doc.set_viewer_stylesheet(VIEWER_STYLESHEET);
         doc.set_user_stylesheet(USER_STYLESHEET);
 
-        // Render content
+        // Render content — show a loading placeholder if Collatinus is still initializing
+        // to avoid blocking the UI. refresh() is called once CollatinusReady fires.
         let language_string = language.to_string();
         let target_string = target.map(|t| t.to_string());
-        let content = query_to_content(query, &language_string, false, target_string.as_ref(), context);
+        let collatinus_ready = context.collatinus_ready.load(std::sync::atomic::Ordering::Acquire);
+        let content = if collatinus_ready {
+            query_to_content(query, &language_string, false, target_string.as_ref(), context)
+        } else {
+            "<p class=\"info\">Latin dictionary is loading\u{2026}</p>".to_string()
+        };
         doc.update(&content);
 
         // Collect page locations for scrollbar
