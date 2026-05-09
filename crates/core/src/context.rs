@@ -1,7 +1,8 @@
 use crate::view::keyboard::Layout;
 use std::path::Path;
 use std::collections::{BTreeMap, VecDeque};
-use std::sync::{Arc, atomic::AtomicBool};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use fxhash::FxHashMap;
 use chrono::Local;
 use globset::Glob;
@@ -49,8 +50,7 @@ pub struct Context {
     pub covered: bool,
     pub shared: bool,
     pub online: bool,
-    /// Shared flag set to `true` by the background init thread once Collatinus is ready.
-    /// Writers must use `Ordering::Release`; readers must use `Ordering::Acquire`.
+    /// Set to `true` by the background init thread once collatinus_init() has completed.
     pub collatinus_ready: Arc<AtomicBool>,
 }
 
@@ -136,7 +136,7 @@ impl Context {
         let lang = self.settings.dictionary.collatinus_target.clone();
         let name = format!("Collatinus (la→{})", lang);
         self.dictionaries.insert(name, Box::new(
-            CollatinusDictionary::new(&lang, Arc::clone(&self.collatinus_ready))
+            CollatinusDictionary::new(&lang)
         ));
     }
 
