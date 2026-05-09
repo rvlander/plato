@@ -1,6 +1,8 @@
 use crate::view::keyboard::Layout;
 use std::path::Path;
 use std::collections::{BTreeMap, VecDeque};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use fxhash::FxHashMap;
 use chrono::Local;
 use globset::Glob;
@@ -48,6 +50,8 @@ pub struct Context {
     pub covered: bool,
     pub shared: bool,
     pub online: bool,
+    /// Set to `true` by the background init thread once collatinus_init() has completed.
+    pub collatinus_ready: Arc<AtomicBool>,
 }
 
 impl Context {
@@ -62,7 +66,8 @@ impl Context {
                   keyboard_layouts: BTreeMap::new(), input_history: FxHashMap::default(),
                   battery, frontlight, lightsensor, notification_index: 0,
                   kb_rect: Rectangle::default(), rng, plugged: false, covered: false,
-                  shared: false, online: false }
+                  shared: false, online: false,
+                  collatinus_ready: Arc::new(AtomicBool::new(false)) }
     }
 
     pub fn batch_import(&mut self) {

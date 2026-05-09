@@ -26,20 +26,25 @@ static std::string                  g_lang = "fr";
 
 static void ensure_initialized() {
     std::call_once(g_init_flag, []() {
-        std::string resDir;
-        const char *env = std::getenv("COLLATINUS_DATA");
-        if (env && *env) {
-            resDir = env;
-            if (resDir.back() != '/') resDir += '/';
-        }
+        // Catch inside the callable: some libc++ versions leave once_flag
+        // stuck in "in-progress" state if the callable throws, causing any
+        // subsequent call_once on another thread to hang forever.
+        try {
+            std::string resDir;
+            const char *env = std::getenv("COLLATINUS_DATA");
+            if (env && *env) {
+                resDir = env;
+                if (resDir.back() != '/') resDir += '/';
+            }
 
-        g_lemCore.reset(new LemCore(resDir, g_lang));
-        g_lemCore->setExtension(true);
+            g_lemCore.reset(new LemCore(resDir, g_lang));
+            g_lemCore->setExtension(true);
 
-        g_lemmat.reset(new Lemmatiseur(g_lemCore.get(), resDir));
-        g_lemmat->setHtml(true);
-        g_lemmat->setMorpho(true);
-        g_lemmat->setFormeT(true);
+            g_lemmat.reset(new Lemmatiseur(g_lemCore.get(), resDir));
+            g_lemmat->setHtml(true);
+            g_lemmat->setMorpho(true);
+            g_lemmat->setFormeT(true);
+        } catch (...) {}
     });
 }
 

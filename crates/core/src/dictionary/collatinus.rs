@@ -15,6 +15,13 @@ impl CollatinusDictionary {
     }
 }
 
+/// Call from a background thread to warm up Collatinus before the user needs it.
+pub fn preload(lang: &str) {
+    if let Ok(c_lang) = CString::new(lang) {
+        unsafe { collatinus_sys::collatinus_init(c_lang.as_ptr()); }
+    }
+}
+
 impl Dictionary for CollatinusDictionary {
     fn lookup(&mut self, word: &str, _fuzzy: bool) -> Result<Vec<[String; 2]>, DictError> {
         let c_word = match CString::new(word) {
@@ -22,7 +29,6 @@ impl Dictionary for CollatinusDictionary {
             Err(_) => return Ok(vec![]),
         };
         let raw = unsafe {
-            collatinus_sys::collatinus_init(self.lang.as_ptr());
             collatinus_sys::collatinus_lookup(c_word.as_ptr(), self.lang.as_ptr())
         };
         if raw.is_null() {

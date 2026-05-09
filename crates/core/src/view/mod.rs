@@ -365,6 +365,8 @@ pub enum Event {
     Back,
     Quit,
     WakeUp,
+    CollatinusTick,
+    CollatinusReady,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

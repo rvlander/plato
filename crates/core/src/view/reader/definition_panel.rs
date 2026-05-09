@@ -20,6 +20,10 @@ use crate::view::dictionary::query_to_content;
 
 const VIEWER_STYLESHEET: &str = "css/dictionary.css";
 const USER_STYLESHEET: &str = "css/dictionary-user.css";
+const CHILD_IMAGE: usize = 1;
+const CHILD_SCROLLBAR: usize = 2;
+
+const SPINNER: [&str; 4] = ["◐", "◓", "◑", "◒"];
 
 pub struct DefinitionPanel {
     id: Id,
@@ -29,6 +33,17 @@ pub struct DefinitionPanel {
     page_locations: Vec<usize>,
     current_page: usize,
     pub target: Option<String>,
+    query: String,
+    language: String,
+    loading_frame: u8,
+}
+
+fn loading_html(frame: u8) -> String {
+    format!(
+        "<p class=\"info\">{} Latin dictionary is loading for the first \
+         time, this may take a few minutes\u{2026}</p>",
+        SPINNER[(frame % 4) as usize]
+    )
 }
 
 fn collect_page_locations(doc: &mut HtmlDocument) -> Vec<usize> {
@@ -77,10 +92,16 @@ impl DefinitionPanel {
         doc.set_viewer_stylesheet(VIEWER_STYLESHEET);
         doc.set_user_stylesheet(USER_STYLESHEET);
 
-        // Render content
+        // Render content — show a loading placeholder if Collatinus is still initializing
+        // to avoid blocking the UI. refresh() is called once CollatinusReady fires.
         let language_string = language.to_string();
         let target_string = target.map(|t| t.to_string());
-        let content = query_to_content(query, &language_string, false, target_string.as_ref(), context);
+        let collatinus_ready = context.collatinus_ready.load(std::sync::atomic::Ordering::Acquire);
+        let content = if collatinus_ready {
+            query_to_content(query, &language_string, false, target_string.as_ref(), context)
+        } else {
+            loading_html(0)
+        };
         doc.update(&content);
 
         // Collect page locations for scrollbar
@@ -143,22 +164,54 @@ impl DefinitionPanel {
             page_locations,
             current_page: 0,
             target: target.map(String::from),
+            query: query.to_string(),
+            language: language.to_string(),
+            loading_frame: 0,
         }
     }
 
-    pub fn go_to_page(&mut self, page: usize, rq: &mut RenderQueue) {
+    pub(super) fn go_to_page(&mut self, page: usize, rq: &mut RenderQueue) {
         if page >= self.page_locations.len() || page == self.current_page {
             return;
         }
         self.current_page = page;
         let loc = self.page_locations[page];
         if let Some((pixmap, _)) = self.doc.pixmap(Location::Exact(loc), 1.0, CURRENT_DEVICE.color_samples()) {
-            if let Some(image) = self.children[1].downcast_mut::<Image>() {
+            if let Some(image) = self.children[CHILD_IMAGE].downcast_mut::<Image>() {
                 image.update(pixmap, rq);
             }
         }
-        if let Some(sb) = self.children[2].downcast_mut::<ScrollBar>() {
+        if let Some(sb) = self.children[CHILD_SCROLLBAR].downcast_mut::<ScrollBar>() {
             sb.update(page, self.page_locations.len(), rq);
+        }
+    }
+
+    pub(super) fn refresh(&mut self, rq: &mut RenderQueue, context: &mut Context) {
+        let content = query_to_content(&self.query, &self.language, false,
+                                       self.target.as_ref(), context);
+        self.doc.update(&content);
+        self.page_locations = collect_page_locations(&mut self.doc);
+        self.current_page = 0;
+
+        if let Some((pixmap, _)) = self.doc.pixmap(Location::Exact(0), 1.0, CURRENT_DEVICE.color_samples()) {
+            if let Some(image) = self.children[CHILD_IMAGE].downcast_mut::<Image>() {
+                image.update(pixmap, rq);
+            }
+        }
+        if let Some(sb) = self.children[CHILD_SCROLLBAR].downcast_mut::<ScrollBar>() {
+            sb.update(0, self.page_locations.len(), rq);
+        }
+    }
+
+    pub(super) fn tick_loading(&mut self, rq: &mut RenderQueue) {
+        self.loading_frame = self.loading_frame.wrapping_add(1);
+        let content = loading_html(self.loading_frame);
+        self.doc.update(&content);
+        self.page_locations = collect_page_locations(&mut self.doc);
+        if let Some((pixmap, _)) = self.doc.pixmap(Location::Exact(0), 1.0, CURRENT_DEVICE.color_samples()) {
+            if let Some(image) = self.children[CHILD_IMAGE].downcast_mut::<Image>() {
+                image.update(pixmap, rq);
+            }
         }
     }
 }
