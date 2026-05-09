@@ -48,7 +48,9 @@ extern "C" {
 int collatinus_init(const char *lang) {
     if (!lang || !*lang) return -1;
     g_lang = lang;
-    ensure_initialized();
+    try {
+        ensure_initialized();
+    } catch (...) {}
     return g_lemCore ? 0 : -1;
 }
 

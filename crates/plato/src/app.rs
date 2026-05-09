@@ -3,7 +3,7 @@ use std::env;
 use std::thread;
 use std::process::Command;
 use std::path::Path;
-use std::sync::{Arc, atomic::Ordering, mpsc::{self, Receiver, Sender}};
+use std::sync::{Arc, mpsc::{self, Receiver, Sender}};
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 use plato_core::anyhow::{Error, Context as ResultExt, format_err};
@@ -304,10 +304,8 @@ pub fn run() -> Result<(), Error> {
         let ready = Arc::clone(&context.collatinus_ready);
         let tx_collatinus = tx.clone();
         thread::spawn(move || {
-            collatinus_preload(&lang, Arc::clone(&ready));
-            if ready.load(Ordering::Acquire) {
-                tx_collatinus.send(Event::CollatinusReady).ok();
-            }
+            collatinus_preload(&lang, ready);
+            tx_collatinus.send(Event::CollatinusReady).ok();
         });
     }
 

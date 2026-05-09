@@ -19,25 +19,26 @@ impl CollatinusDictionary {
 }
 
 /// Call this from a background thread to initialize Collatinus.
-/// Sets `ready` to true on success (leaves it false on failure).
+/// Sets `ready` to true once collatinus_init() has run, regardless of whether the
+/// underlying data was found. `ready` means "g_lang is set — safe to call
+/// collatinus_lookup()", not "init fully succeeded". collatinus_lookup() handles
+/// its own initialization robustly (try-catch) the same way the old synchronous
+/// lookup did.
 pub fn preload(lang: &str, ready: Arc<AtomicBool>) {
     let c_lang = match CString::new(lang) {
         Ok(s) => s,
         Err(_) => return,
     };
-    let rc = unsafe { collatinus_sys::collatinus_init(c_lang.as_ptr()) };
-    if rc == 0 {
-        ready.store(true, Ordering::Release);
-    }
+    unsafe { collatinus_sys::collatinus_init(c_lang.as_ptr()); }
+    ready.store(true, Ordering::Release);
 }
 
 impl Dictionary for CollatinusDictionary {
     fn lookup(&mut self, word: &str, _fuzzy: bool) -> Result<Vec<[String; 2]>, DictError> {
-        // Safety: this guard is not just a UX concern — it is the barrier that prevents
-        // calling into C++ before collatinus_init() has set g_lang. collatinus_lookup()
-        // calls ensure_initialized() internally, which reads g_lang at construction time;
-        // if preload() has not run yet, g_lang still holds its default "fr" regardless
-        // of this struct's lang field. Do not remove this check.
+        // Guard: wait until preload() has called collatinus_init(), which sets g_lang.
+        // collatinus_lookup() calls ensure_initialized() internally, which reads g_lang;
+        // before preload() runs, g_lang holds its C++ default ("fr") regardless of this
+        // struct's lang field. The guard prevents a wrong-language lookup on first use.
         if !self.ready.load(Ordering::Acquire) {
             return Ok(vec![
                 ["".to_string(),
