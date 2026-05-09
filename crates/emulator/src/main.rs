@@ -5,8 +5,10 @@ use std::sync::mpsc;
 use std::collections::VecDeque;
 use std::path::Path;
 use std::time::Duration;
+use std::sync::{Arc, atomic::Ordering};
 use plato_core::anyhow::{Error, Context as ResultExt};
 use plato_core::chrono::Local;
+use plato_core::collatinus_preload;
 use sdl2::event::Event as SdlEvent;
 use sdl2::keyboard::{Scancode, Keycode, Mod};
 use sdl2::render::{WindowCanvas, BlendMode};
@@ -45,7 +47,6 @@ use plato_core::lightsensor::LightSensor;
 use plato_core::library::Library;
 use plato_core::font::Fonts;
 use plato_core::context::Context;
-use std::sync::atomic::Ordering;
 use plato_core::pt;
 use plato_core::png;
 
@@ -271,11 +272,17 @@ fn main() -> Result<(), Error> {
         }
     });
 
-    // On the emulator (macOS) background thread Collatinus init hangs due to
-    // platform threading constraints. Mark ready immediately so the panel
-    // calls collatinus_lookup() directly (which will return empty results
-    // if data files aren't present, with no loading indicator).
-    context.collatinus_ready.store(true, Ordering::Release);
+    {
+        let lang = context.settings.dictionary.collatinus_target.clone();
+        let ready = Arc::clone(&context.collatinus_ready);
+        let tx_collatinus = tx.clone();
+        thread::spawn(move || {
+            collatinus_preload(&lang);
+            ready.store(true, Ordering::Release);
+            tx_collatinus.send(Event::CollatinusReady).ok();
+        });
+    }
+
 
     let mut history: Vec<Box<dyn View>> = Vec::new();
     let mut rq = RenderQueue::new();
