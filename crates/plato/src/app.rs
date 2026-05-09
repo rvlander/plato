@@ -987,6 +987,9 @@ pub fn run() -> Result<(), Error> {
                 }
             },
             _ => {
+                if matches!(&evt, Event::CollatinusReady) {
+                    tx.send(Event::Notify("CollatinusReady reached app loop".to_string())).ok();
+                }
                 handle_event(view.as_mut(), &evt, &tx, &mut bus, &mut rq, &mut context);
             },
         }
