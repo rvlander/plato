@@ -23,6 +23,8 @@ const USER_STYLESHEET: &str = "css/dictionary-user.css";
 const CHILD_IMAGE: usize = 1;
 const CHILD_SCROLLBAR: usize = 2;
 
+const SPINNER: [&str; 4] = ["◐", "◓", "◑", "◒"];
+
 pub struct DefinitionPanel {
     id: Id,
     rect: Rectangle,
@@ -33,6 +35,15 @@ pub struct DefinitionPanel {
     pub target: Option<String>,
     query: String,
     language: String,
+    loading_frame: u8,
+}
+
+fn loading_html(frame: u8) -> String {
+    format!(
+        "<p class=\"info\">{} Latin dictionary is loading for the first \
+         time, this may take a few minutes\u{2026}</p>",
+        SPINNER[(frame % 4) as usize]
+    )
 }
 
 fn collect_page_locations(doc: &mut HtmlDocument) -> Vec<usize> {
@@ -89,7 +100,7 @@ impl DefinitionPanel {
         let content = if collatinus_ready {
             query_to_content(query, &language_string, false, target_string.as_ref(), context)
         } else {
-            "<p class=\"info\">Latin dictionary is loading\u{2026}</p>".to_string()
+            loading_html(0)
         };
         doc.update(&content);
 
@@ -155,6 +166,7 @@ impl DefinitionPanel {
             target: target.map(String::from),
             query: query.to_string(),
             language: language.to_string(),
+            loading_frame: 0,
         }
     }
 
@@ -188,6 +200,18 @@ impl DefinitionPanel {
         }
         if let Some(sb) = self.children[CHILD_SCROLLBAR].downcast_mut::<ScrollBar>() {
             sb.update(0, self.page_locations.len(), rq);
+        }
+    }
+
+    pub(super) fn tick_loading(&mut self, rq: &mut RenderQueue) {
+        self.loading_frame = self.loading_frame.wrapping_add(1);
+        let content = loading_html(self.loading_frame);
+        self.doc.update(&content);
+        self.page_locations = collect_page_locations(&mut self.doc);
+        if let Some((pixmap, _)) = self.doc.pixmap(Location::Exact(0), 1.0, CURRENT_DEVICE.color_samples()) {
+            if let Some(image) = self.children[CHILD_IMAGE].downcast_mut::<Image>() {
+                image.update(pixmap, rq);
+            }
         }
     }
 }

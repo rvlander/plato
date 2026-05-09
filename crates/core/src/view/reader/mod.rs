@@ -4041,6 +4041,18 @@ impl View for Reader {
                 }
                 true
             },
+            Event::CollatinusTick => {
+                if !context.collatinus_ready.load(std::sync::atomic::Ordering::Acquire) {
+                    if let Some(index) = locate_by_id(self, ViewId::DefinitionPanel) {
+                        let panel_rect = *self.child(index).rect();
+                        if let Some(panel) = self.child_mut(index).downcast_mut::<DefinitionPanel>() {
+                            panel.tick_loading(rq);
+                            rq.add(RenderData::new(panel.id(), panel_rect, UpdateMode::Gui));
+                        }
+                    }
+                }
+                false
+            },
             Event::CollatinusReady => {
                 if let Some(index) = locate_by_id(self, ViewId::DefinitionPanel) {
                     let panel_rect = *self.child(index).rect();

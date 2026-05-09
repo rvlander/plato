@@ -276,10 +276,19 @@ fn main() -> Result<(), Error> {
         let lang = context.settings.dictionary.collatinus_target.clone();
         let ready = Arc::clone(&context.collatinus_ready);
         let tx_collatinus = tx.clone();
+        let tx_tick = tx.clone();
+        let ready_tick = Arc::clone(&context.collatinus_ready);
         thread::spawn(move || {
             collatinus_preload(&lang);
             ready.store(true, Ordering::Release);
             tx_collatinus.send(Event::CollatinusReady).ok();
+        });
+        thread::spawn(move || {
+            while !ready_tick.load(Ordering::Acquire) {
+                thread::sleep(Duration::from_secs(1));
+                if ready_tick.load(Ordering::Acquire) { break; }
+                tx_tick.send(Event::CollatinusTick).ok();
+            }
         });
     }
 
